@@ -41,24 +41,25 @@ async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool 
         "zonelocalid": int(pt.zonelocalid) if pt and pt.zonelocalid is not None else 0,
     }
 
-    # gold log — completed
-    log_rows = await db.execute(
-        text("SELECT cash, fintime FROM usecashlog WHERE userid=:uid ORDER BY fintime DESC LIMIT 30"),
-        {"uid": user_id}
-    )
     gold_log = {}
     idx = 0
-    for r in log_rows.fetchall():
-        gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.fintime), "pending": 0}
-        idx += 1
 
-    # pending gold
+    # pending gold first (most recent)
     pend_rows = await db.execute(
-        text("SELECT cash, creatime FROM usecashnow WHERE userid=:uid LIMIT 10"),
+        text("SELECT cash, creatime FROM usecashnow WHERE userid=:uid ORDER BY creatime DESC LIMIT 10"),
         {"uid": user_id}
     )
     for r in pend_rows.fetchall():
         gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.creatime), "pending": 1}
+        idx += 1
+
+    # completed gold log
+    log_rows = await db.execute(
+        text("SELECT cash, fintime FROM usercashlog WHERE userid=:uid ORDER BY fintime DESC LIMIT 30"),
+        {"uid": user_id}
+    )
+    for r in log_rows.fetchall():
+        gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.fintime), "pending": 0}
         idx += 1
 
     chars = {}  # populated asynchronously by /api/accounts/chars
