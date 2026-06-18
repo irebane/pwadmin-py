@@ -58,9 +58,12 @@ def from_php(php_path: str) -> dict:
 # Known (item_id → (type, subtype)) from the existing php structure.
 # We read this from pw_items.json if available, to anchor the scan.
 def _build_anchor_map(existing_json: dict) -> dict[int, tuple[int, int]]:
+    # Exclude type 8 / subtype 99 — that's the auto-generated bucket, always rebuilt.
     anchor: dict[int, tuple[int, int]] = {}
     for t_str, subs in existing_json.items():
         for s_str, entries in subs.items():
+            if t_str == "8" and s_str == "99":
+                continue
             vals = entries.values() if isinstance(entries, dict) else entries
             for entry in vals:
                 parts = entry.split("#")
@@ -178,13 +181,16 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
 
     print(f"Found {len(found):,} raw item_id/name pairs.", file=sys.stderr)
 
-    # Build result: start from existing structure, update/add names
+    # Build result: start from existing structure, update/add names.
+    # Type "8"/subtype "99" is our auto-generated bucket — always rebuild it
+    # from scratch so stale or Chinese-named entries from prior runs are removed.
     result: dict[str, dict[str, list]] = {}
     if existing:
-        # Deep-copy existing structure
         for t_str, subs in existing.items():
             result[t_str] = {}
             for s_str, entries in subs.items():
+                if t_str == "8" and s_str == "99":
+                    continue  # rebuilt below
                 vals = list(entries.values() if isinstance(entries, dict) else entries)
                 result[t_str][s_str] = []
                 for entry in vals:
@@ -192,8 +198,10 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
                     try:
                         iid = int(parts[1])
                         if iid in found:
-                            parts[0] = found[iid][0]  # unpack (name, is_english)
-                            entry = "#".join(parts)
+                            name, is_eng = found[iid]
+                            if is_eng:  # only overwrite with English names
+                                parts[0] = name
+                                entry = "#".join(parts)
                     except (ValueError, IndexError):
                         pass
                     result[t_str][s_str].append(entry)
@@ -201,8 +209,8 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
     # Add newly found items not in existing (into type "8", subtype "99")
     existing_ids = set(anchor.keys())
     new_items = [
-        (iid, name) for iid, (name, _) in sorted(found.items())
-        if iid not in existing_ids
+        (iid, name) for iid, (name, is_eng) in sorted(found.items())
+        if iid not in existing_ids and is_eng
     ]
     if new_items:
         result.setdefault("8", {}).setdefault("99", [])
