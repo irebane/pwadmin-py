@@ -221,13 +221,15 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
                     parts = entry.split("#")
                     try:
                         iid = int(parts[1])
-                        if iid in found:
-                            name, is_eng = found[iid]
-                            if is_eng:  # only overwrite with English names
-                                parts[0] = name
-                                entry = "#".join(parts)
                     except (ValueError, IndexError):
-                        pass
+                        result[t_str][s_str].append(entry)
+                        continue
+                    if iid not in found:
+                        continue  # item ID not in this server's elements.data — drop it
+                    name, is_eng = found[iid]
+                    if is_eng:  # only overwrite with English names
+                        parts[0] = name
+                        entry = "#".join(parts)
                     result[t_str][s_str].append(entry)
 
     # Add newly found items not in existing (into type "8", subtype "99")
