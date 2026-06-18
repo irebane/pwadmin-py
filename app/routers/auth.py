@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from app.deps import get_db
 from app.auth.passwords import verify_password_compat, hash_password_compat
 from app.auth.sessions import create_session, clear_session
+from app.auth.csrf import generate_csrf_token
 from app.models.users import User, Point
 from app.models.audit import LoginAttempt
 from app.config import settings
@@ -68,12 +69,15 @@ async def login(
         "is_admin": is_admin,
     }
     create_session(response, session_data)
+    csrf_token = generate_csrf_token()
+    response.set_cookie("csrf_token", csrf_token, httponly=False, samesite="strict")
     return {"success": True, "is_admin": is_admin}
 
 
 @router.post("/api/logout")
 async def logout(response: Response):
     clear_session(response)
+    response.delete_cookie("csrf_token")
     return {"success": True}
 
 

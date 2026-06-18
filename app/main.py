@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from app.database import engine, Base
@@ -13,7 +15,38 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_CSRF_EXEMPT = {"/api/login", "/api/logout", "/api/register"}
+_MUTATING_METHODS = {"POST", "PUT", "DELETE", "PATCH"}
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # CSRF double-submit cookie check on all mutating API routes
+        if request.method in _MUTATING_METHODS and request.url.path not in _CSRF_EXEMPT:
+            cookie_token = request.cookies.get("csrf_token")
+            header_token = request.headers.get("X-CSRF-Token")
+            import secrets as _sec
+            if not cookie_token or not header_token or not _sec.compare_digest(cookie_token, header_token):
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "CSRF validation failed"}, status_code=403)
+
+        response: Response = await call_next(request)
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+            "img-src 'self' data:; "
+            "connect-src 'self';"
+        )
+        return response
+
+
 app = FastAPI(title="pwadmin-py", lifespan=lifespan)
+app.add_middleware(SecurityHeadersMiddleware)
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -30,24 +63,24 @@ app.include_router(activity_log.router)
 
 @app.get("/")
 async def root(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html")
 
 
 @app.get("/account")
 async def account_page(request: Request):
-    return templates.TemplateResponse("account/index.html", {"request": request})
+    return templates.TemplateResponse(request, "account/index.html")
 
 
 @app.get("/gshop")
 async def gshop_page(request: Request):
-    return templates.TemplateResponse("gshop/index.html", {"request": request})
+    return templates.TemplateResponse(request, "gshop/index.html")
 
 
 @app.get("/server")
 async def server_page(request: Request):
-    return templates.TemplateResponse("server/index.html", {"request": request})
+    return templates.TemplateResponse(request, "server/index.html")
 
 
 @app.get("/item-builder")
 async def item_builder_page(request: Request):
-    return templates.TemplateResponse("item_builder/index.html", {"request": request})
+    return templates.TemplateResponse(request, "item_builder/index.html")
