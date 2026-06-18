@@ -1,9 +1,24 @@
 import asyncio
+import json
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from app.deps import require_admin
 from app.services.server_config import read_game_config, save_game_config
 from app.services.server_status import get_server_status, get_maps_status
 from pydantic import BaseModel
+
+_LOG_FILE = Path(__file__).parent.parent.parent / "data" / "activity_log.json"
+
+
+def _read_log() -> list:
+    try:
+        return json.loads(_LOG_FILE.read_text()) if _LOG_FILE.exists() else []
+    except Exception:
+        return []
+
+
+def _write_log(log: list) -> None:
+    _LOG_FILE.write_text(json.dumps(log))
 
 router = APIRouter(prefix="/api/server")
 
@@ -45,6 +60,31 @@ async def save_config(body: ConfigBody, user: dict = Depends(require_admin)):
     if error:
         raise HTTPException(500, detail=error)
     return {"success": True, "message": "For changes you need (re)start the server!"}
+
+
+class LogBody(BaseModel):
+    action: str        # get | add | clear
+    entry: str = ""
+
+
+@router.post("/log")
+async def activity_log(body: LogBody, user: dict = Depends(require_admin)):
+    if body.action == "get":
+        return _read_log()
+    if body.action == "clear":
+        _write_log([])
+        return {"ok": True}
+    if body.action == "add":
+        entry = body.entry.strip()
+        if not entry:
+            raise HTTPException(400, detail="Empty entry")
+        log = _read_log()
+        log.insert(0, entry)
+        if len(log) > 200:
+            log = log[:200]
+        _write_log(log)
+        return {"ok": True}
+    raise HTTPException(400, detail="Invalid action")
 
 
 class ControlBody(BaseModel):

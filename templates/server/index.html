@@ -147,6 +147,54 @@
           class="mt-2 text-xs text-center font-mono"></p>
       </div>
 
+      <!-- CONFIG STATUS ────────────────────────────────────────────── -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-slate-800">
+          <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Config Status</h2>
+        </div>
+        <div class="px-4 py-3">
+          <template x-if="initLog.length === 0">
+            <p class="text-xs text-slate-700 italic">Loading…</p>
+          </template>
+          <template x-for="(entry, i) in initLog" :key="i">
+            <div class="text-xs font-mono py-0.5 border-b border-slate-800/50 last:border-0"
+              :class="entry.startsWith('Error') ? 'text-red-400' : entry.startsWith('Warning') ? 'text-amber-400' : 'text-emerald-500'"
+              x-text="entry"></div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ACTIVITY LOG ─────────────────────────────────────────────── -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 cursor-pointer select-none"
+             @click="logOpen = !logOpen">
+          <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Activity Log</h2>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-600" x-text="log.length + ' entries'"></span>
+            <button @click.stop="clearLog()"
+              class="text-xs text-slate-600 hover:text-slate-300 transition">Clear</button>
+            <span class="text-slate-600 text-xs" x-text="logOpen ? '▲' : '▼'"></span>
+          </div>
+        </div>
+        <div x-show="logOpen" class="px-4 py-3">
+          <template x-if="log.length === 0">
+            <p class="text-xs text-slate-700 italic">No activity yet</p>
+          </template>
+          <template x-for="(entry, i) in pagedLog" :key="i">
+            <div class="text-xs text-slate-400 font-mono py-0.5 border-b border-slate-800/50 last:border-0"
+                 x-text="entry"></div>
+          </template>
+          <div x-show="logPageCount > 1"
+               class="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
+            <button @click="logPage = Math.max(1, logPage - 1)" :disabled="logPage === 1"
+              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition">← Prev</button>
+            <span class="text-xs text-slate-600" x-text="'Page ' + logPage + ' / ' + logPageCount"></span>
+            <button @click="logPage = Math.min(logPageCount, logPage + 1)" :disabled="logPage === logPageCount"
+              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition">Next →</button>
+          </div>
+        </div>
+      </div>
+
     </div><!-- end left col -->
 
     <!-- ── RIGHT COLUMN (col-span-3) ── -->
@@ -345,14 +393,22 @@ function serverPage() {
     },
 
     /* config */
-    classMask: 0, classes: [],
+    classMask: 0, classes: [], initLog: [],
     debug: false, xp: 0, sp: 0, drop: 0, gold: 0,
     pvp: false, tw: false, caseInsens: false,
     maxName: 16, glinkdCount: 2, dbWorkers: 2, nameWorkers: 1,
     saving: false, cfgMsg: '', cfgOk: true,
 
+    /* activity log */
+    log: [], logOpen: true, logPage: 1, logPerPage: 20,
+    get logPageCount() { return Math.max(1, Math.ceil(this.log.length / this.logPerPage)); },
+    get pagedLog() {
+      const s = (this.logPage - 1) * this.logPerPage;
+      return this.log.slice(s, s + this.logPerPage);
+    },
+
     async init() {
-      await Promise.all([this.refreshStatus(), this.loadConfig()]);
+      await Promise.all([this.refreshStatus(), this.loadConfig(), this.loadLog()]);
       setInterval(() => this.refreshStatus(), 5000);
     },
 
@@ -389,7 +445,29 @@ function serverPage() {
         this.glinkdCount = d.glinkd_count ?? 2;
         this.dbWorkers   = d.db_workers   ?? 2;
         this.nameWorkers = d.name_workers ?? 1;
+        this.initLog     = d.init_log     ?? [];
       } catch(e) {}
+    },
+
+    async loadLog() {
+      try {
+        const r = await fetch('/api/server/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'get'})});
+        if (r.ok) this.log = await r.json();
+      } catch(e) {}
+    },
+
+    addLog(msg) {
+      const entry = new Date().toLocaleTimeString() + '  ' + msg;
+      this.log.unshift(entry);
+      if (this.log.length > 200) this.log.pop();
+      this.logPage = 1;
+      fetch('/api/server/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'add', entry})}).catch(() => {});
+    },
+
+    clearLog() {
+      this.log = [];
+      this.logPage = 1;
+      fetch('/api/server/log', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'clear'})}).catch(() => {});
     },
 
     calcMask() {
@@ -422,7 +500,7 @@ function serverPage() {
         const d = await r.json().catch(() => ({}));
         this.cfgOk  = r.ok;
         this.cfgMsg = r.ok ? (d.message || 'Saved!') : (d.detail || 'Save failed');
-        if (r.ok) await this.loadConfig();
+        if (r.ok) { this.addLog('Config saved'); await this.loadConfig(); }
       } catch(e) { this.cfgOk = false; this.cfgMsg = 'Network error'; }
       this.saving = false;
       setTimeout(() => this.cfgMsg = '', 5000);
@@ -447,6 +525,7 @@ function serverPage() {
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) { this.controlling = false; alert('Error: ' + (d.detail || action + ' failed')); return; }
+        this.addLog('Server ' + action + ' sent');
 
         const wantRunning = action !== 'stop';
         const deadline = Date.now() + 120000;
