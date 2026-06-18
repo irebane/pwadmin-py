@@ -47,7 +47,6 @@
           <th class="px-3 py-2 text-right">Qty</th>
           <th class="px-3 py-2 text-right">Price (silver)</th>
           <th class="px-3 py-2 text-right">Duration (s)</th>
-          <th class="px-3 py-2 text-right">Class mask</th>
           <th class="px-3 py-2 text-center">Actions</th>
         </tr>
       </thead>
@@ -65,7 +64,6 @@
             <td class="px-3 py-1.5 text-right" x-text="item.qty"></td>
             <td class="px-3 py-1.5 text-right" x-text="item.price"></td>
             <td class="px-3 py-1.5 text-right" x-text="item.duration || 'Perm'"></td>
-            <td class="px-3 py-1.5 text-right" x-text="item.class_mask"></td>
             <td class="px-3 py-1.5 text-center">
               <button @click="editItem(item)"
                 class="text-xs px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded mr-1">Edit</button>
@@ -75,10 +73,10 @@
           </tr>
         </template>
         <tr x-show="filtered.length === 0 && !loading">
-          <td colspan="11" class="px-3 py-8 text-center text-slate-600">No items</td>
+          <td colspan="10" class="px-3 py-8 text-center text-slate-600">No items</td>
         </tr>
         <tr x-show="loading">
-          <td colspan="11" class="px-3 py-8 text-center text-slate-600">Loading...</td>
+          <td colspan="10" class="px-3 py-8 text-center text-slate-600">Loading...</td>
         </tr>
       </tbody>
     </table>
