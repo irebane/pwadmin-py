@@ -16,11 +16,11 @@ async def read_conf(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
-async def write_conf_atomic(path: Path, content: str) -> None:
+async def write_conf_atomic(path: Path, content: str, encoding: str = "utf-8") -> None:
     """Write via temp file + atomic rename."""
     tmp = str(path) + ".tmp"
     path.parent.mkdir(parents=True, exist_ok=True)
-    Path(tmp).write_text(content, encoding="utf-8")
+    Path(tmp).write_text(content, encoding=encoding)
     os.replace(tmp, str(path))
 
 
@@ -146,9 +146,9 @@ async def save_game_config(data: dict) -> str:
     """Write values to the config files. Returns '' on success or error message."""
     errors = []
 
-    async def _try_write(label: str, path: Path, content: str) -> bool:
+    async def _try_write(label: str, path: Path, content: str, encoding: str = "utf-8") -> bool:
         try:
-            await write_conf_atomic(path, content)
+            await write_conf_atomic(path, content, encoding=encoding)
             return True
         except Exception as e:
             errors.append(f"{label}: {e}")
@@ -203,9 +203,9 @@ async def save_game_config(data: dict) -> str:
     try:
         gamedbd_conf = _server_file_path(4, "gamesys.conf")
         db_workers = max(1, int(data.get("db_workers", 1)))
-        content = gamedbd_conf.read_text()
+        content = gamedbd_conf.read_text(encoding="latin-1")
         content = re.sub(r'(\(1,)\d+(\))', rf'\g<1>{db_workers}\2', content)
-        await _try_write("gamedbd/gamesys.conf", gamedbd_conf, content)
+        await _try_write("gamedbd/gamesys.conf", gamedbd_conf, content, encoding="latin-1")
     except Exception as e:
         errors.append(f"gamedbd/gamesys.conf: {e}")
 
@@ -292,7 +292,7 @@ async def _rebuild_gmserver_conf(glinkd_count: int, path_str: str) -> None:
 
 async def _rebuild_start_sh(glinkd_count: int) -> None:
     path = Path("/home/start.sh")
-    if not path.exists() or not os.access(path, os.W_OK):
+    if not path.exists() or not os.access(path, os.W_OK) or not os.access(path.parent, os.W_OK):
         return
     lines = path.read_text().splitlines(keepends=True)
     new_lines = []
