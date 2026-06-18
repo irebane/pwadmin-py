@@ -88,8 +88,9 @@ def _read_utf16le_str(data: bytes, offset: int, max_chars: int = 64) -> str:
 
 _STAR = set("☆★✦")
 _VALID_NAME = re.compile(
-    r'^[☆★✦]*[A-Z一-鿿][A-Za-z0-9\s一-鿿·\'\-\+\.\!\(\)\[\]☆★✦°·:,&%/]{1,50}$'
+    r'^[☆★✦]*[A-Z一-鿿][A-Za-z0-9\s一-鿿·\'\-\+\.\!\(\)\[\]☆★✦°·:,&%]{1,50}$'
 )
+_NA_PREFIX = re.compile(r'^N/A\s*')
 
 def _is_valid_item_name(name: str) -> bool:
     if not name or len(name) < 3 or len(name) > 55:
@@ -143,6 +144,8 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
             if name_off + 4 > len(data):
                 continue
             name = _read_utf16le_str(data, name_off, max_chars=48)
+            # Strip "N/A" untranslated-English placeholder to get the real name
+            name = _NA_PREFIX.sub("", name).strip()
             if _is_valid_item_name(name) and len(name) > len(best):
                 best = name
         if not best:
