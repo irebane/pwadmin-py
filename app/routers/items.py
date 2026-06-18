@@ -127,7 +127,12 @@ async def items_log(request: Request, user: dict = Depends(require_admin)):
                 ))
                 result = []
                 for r in rows:
-                    line = (f"0#{r[0]}###{r[1]}##{r[0]}#{r[3]}#{r[4]}"
+                    # Packet format (# separated): [0]receiver [1]money [2]title [3]body
+                    # [4]"" [5]itmName [6]"" [7]itemid [8]mask [9]proctype [10]count
+                    # [11]maxcount [12]guid1 [13]guid2 [14]expire [15]octet
+                    # r: itemid,itemname,itemoctet,itemmask,itemproctype,itemcount,
+                    #    itemmaxcount,itemguid1,itemguid2,itemexpire
+                    line = (f"0#0#{r[1]}###{r[1]}##{r[0]}#{r[3]}#{r[4]}"
                             f"#{r[5]}#{r[6]}#{r[7]}#{r[8]}#{r[9]}#{r[2]}#####")
                     result.append(line)
                 return [{"error": ""}, result]
