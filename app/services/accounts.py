@@ -61,26 +61,31 @@ async def load_account_v2(db: AsyncSession, user_id: int) -> list:
         gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.creatime), "pending": 1}
         idx += 1
 
-    # characters — roles.account_id is the game's internal account ID (point.aid), not users.ID
-    char_rows = await db.execute(
-        text("SELECT r.role_id, r.role_name, r.role_level, r.role_race, r.role_occupation "
-             "FROM roles r JOIN point p ON p.aid = r.account_id WHERE p.uid=:uid "
-             "ORDER BY r.role_id ASC"),
-        {"uid": user_id}
-    )
+    # characters — query gamedbd socket via point.aid (game account ID)
     classes = settings.pw_classes_dict
     chars = {}
-    for i, r in enumerate(char_rows.fetchall()):
-        occ = int(r.role_occupation or 0)
-        cls_name = classes.get(occ, f"Class{occ}")
-        chars[i] = {
-            "roleid": int(r.role_id),
-            "rolename": str(r.role_name),
-            "roleclass": cls_name,
-            "rolepath": "",
-            "rolelevel": int(r.role_level or 0),
-            "posX": 0, "posY": 0, "posZ": 0, "map": 0,
-        }
+    aid_row = await db.execute(
+        text("SELECT aid FROM point WHERE uid=:uid LIMIT 1"), {"uid": user_id}
+    )
+    aid_rec = aid_row.fetchone()
+    if aid_rec:
+        import asyncio
+        from app.pw_socket import get_user_roles, get_role_base
+        loop = asyncio.get_event_loop()
+        role_list = await loop.run_in_executor(None, get_user_roles, int(aid_rec.aid))
+        for i, role in enumerate(role_list):
+            base = await loop.run_in_executor(None, get_role_base, role["role_id"], classes)
+            chars[i] = {
+                "roleid": role["role_id"],
+                "rolename": role["role_name"],
+                "roleclass": base["role_class"] if base else "",
+                "rolepath": base["role_path"] if base else "",
+                "rolelevel": base["role_level"] if base else 0,
+                "posX": base["pos_x"] if base else 0,
+                "posY": base["pos_y"] if base else 0,
+                "posZ": base["pos_z"] if base else 0,
+                "map": base["map"] if base else 0,
+            }
 
     if user.birthday:
         try:
