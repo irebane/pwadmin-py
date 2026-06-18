@@ -55,7 +55,7 @@ async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool 
 
     # completed gold log
     log_rows = await db.execute(
-        text("SELECT cash, fintime FROM usercashlog WHERE userid=:uid ORDER BY fintime DESC LIMIT 30"),
+        text("SELECT cash, fintime FROM usecashlog WHERE userid=:uid ORDER BY fintime DESC LIMIT 30"),
         {"uid": user_id}
     )
     for r in log_rows.fetchall():
