@@ -88,7 +88,7 @@ class RegisterRequest(BaseModel):
 
 
 @router.post("/api/register")
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     username = body.username.lower().strip()
     if not (4 <= len(username) <= 20) or not username.isalnum():
         raise HTTPException(status_code=400, detail="Username must be 4-20 alphanumeric characters")
@@ -107,11 +107,14 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     max_id = await db.scalar(select(func.max(User.ID))) or 0
     new_id = ((max_id // 16) + 1) * 16
 
+    client_ip = request.client.host if request.client else ""
     user = User(
         ID=new_id, name=username, passwd=hashed,
         email=body.email.lower(),
+        idnumber=client_ip,
         WebPoint=settings.start_gold,
         VotePoint=settings.start_point,
+        Prompt="", answer="",
     )
     db.add(user)
     await db.commit()

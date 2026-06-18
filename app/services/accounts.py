@@ -71,9 +71,8 @@ async def load_account_v2(db: AsyncSession, user_id: int) -> list:
     classes = settings.pw_classes_dict
     chars = {}
     for i, r in enumerate(char_rows.fetchall()):
-        race = int(r.role_race or 0)
         occ = int(r.role_occupation or 0)
-        cls_name = classes.get(race, f"Race{race}") + (f" ({occ})" if occ else "")
+        cls_name = classes.get(occ, f"Class{occ}")
         chars[i] = {
             "roleid": int(r.role_id),
             "rolename": str(r.role_name),
