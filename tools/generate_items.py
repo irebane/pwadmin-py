@@ -91,6 +91,12 @@ _VALID_NAME = re.compile(
     r'^[☆★✦]*[A-Z一-鿿][A-Za-z0-9\s一-鿿·\'\-\+\.\!\(\)\[\]☆★✦°·:,&%]{1,50}$'
 )
 _NA_PREFIX = re.compile(r'^N/A\s*')
+_CJK = re.compile(r'[一-鿿]')
+
+
+def _is_cjk(name: str) -> bool:
+    return bool(_CJK.search(name))
+
 
 def _is_valid_item_name(name: str) -> bool:
     if not name or len(name) < 3 or len(name) > 55:
@@ -129,7 +135,12 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
     #   fashion/wings/misc:    item_id at record+0, name at item_id+4
     #   some tables:           item_id at record+2, name at item_id+4  (2-byte aligned)
     # We scan every 2 bytes and try names at both +4 and +12.
-    found: dict[int, str] = {}
+    #
+    # The same numeric ID can appear in multiple tables (e.g. item table AND
+    # recipe table), so we apply a priority:
+    #   1. English names beat Chinese names (game client shows English)
+    #   2. Within the same language, longer name wins (more specific table)
+    found: dict[int, tuple[str, bool]] = {}  # id → (name, is_english)
     n = len(data) - 20
 
     print(f"Scanning {len(data):,} bytes …", file=sys.stderr)
@@ -138,21 +149,32 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
         item_id = struct.unpack_from("<I", data, i)[0]
         if not (4000 <= item_id <= 40000):
             continue
-        # Try name at +4 first (fashion/misc), then +12 (weapons/armor)
-        best = ""
+        # Try name at +4 (fashion/misc) and +12 (weapons/armor); keep best
+        best, best_is_eng = "", True
         for name_off in (i + 4, i + 12):
             if name_off + 4 > len(data):
                 continue
             name = _read_utf16le_str(data, name_off, max_chars=48)
-            # Strip "N/A" untranslated-English placeholder to get the real name
             name = _NA_PREFIX.sub("", name).strip()
-            if _is_valid_item_name(name) and len(name) > len(best):
-                best = name
+            if not _is_valid_item_name(name):
+                continue
+            is_eng = not _is_cjk(name)
+            # Pick this name if: it's English and current best is Chinese,
+            # or same language and longer
+            if (is_eng and not best_is_eng) or \
+               (is_eng == best_is_eng and len(name) > len(best)):
+                best, best_is_eng = name, is_eng
         if not best:
             continue
-        # Prefer longer / more specific name for duplicate IDs across tables
-        if len(best) > len(found.get(item_id, "")):
-            found[item_id] = best
+        # Compare against previously stored name for this ID
+        prev = found.get(item_id)
+        if prev is None:
+            found[item_id] = (best, best_is_eng)
+        else:
+            prev_name, prev_is_eng = prev
+            if (best_is_eng and not prev_is_eng) or \
+               (best_is_eng == prev_is_eng and len(best) > len(prev_name)):
+                found[item_id] = (best, best_is_eng)
 
     print(f"Found {len(found):,} raw item_id/name pairs.", file=sys.stderr)
 
@@ -170,8 +192,7 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
                     try:
                         iid = int(parts[1])
                         if iid in found:
-                            # Update name with freshly scanned value
-                            parts[0] = found[iid]
+                            parts[0] = found[iid][0]  # unpack (name, is_english)
                             entry = "#".join(parts)
                     except (ValueError, IndexError):
                         pass
@@ -180,7 +201,7 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
     # Add newly found items not in existing (into type "8", subtype "99")
     existing_ids = set(anchor.keys())
     new_items = [
-        (iid, name) for iid, name in sorted(found.items())
+        (iid, name) for iid, (name, _) in sorted(found.items())
         if iid not in existing_ids
     ]
     if new_items:
