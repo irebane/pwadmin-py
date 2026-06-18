@@ -349,7 +349,9 @@ async def account_save_v2(
         if new_pwd1 != new_pwd2:
             return _tool_resp(error="New passwords do not match.")
         if not is_admin:
-            if not verify_password_compat(user.name, cur_pwd, user.passwd, settings.pass_type):
+            # Accept either: stored hash sent back as-is, or plain-text password that hashes to match
+            valid = (cur_pwd == user.passwd) or verify_password_compat(user.name, cur_pwd, user.passwd, settings.pass_type)
+            if not valid:
                 return _tool_resp(error="Current password is incorrect.")
         user.passwd = hash_password_compat(user.name, new_pwd1, settings.pass_type)
 

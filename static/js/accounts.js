@@ -276,6 +276,7 @@ function EditUserData(userData){
 	if (userD[0]["error"]!=""){
 		alert(userD[0]["error"]);
 	}else{
+		SwitchDisplayDataDiv(1);
 		if (Object.keys(userD[1].length>12)){
 			var genderN=["","Male","Female"];
 			var rankN=["Member","Game Master"];

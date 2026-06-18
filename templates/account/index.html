@@ -208,16 +208,16 @@
             <div class="text-slate-200" id="AccInfoCI">0</div>
           </div>
           <div class="bg-slate-800/50 rounded-lg px-3 py-2">
-            <div class="text-slate-500 mb-0.5">Gold / Points</div>
-            <div class="text-amber-300" id="AccInfoAv">—</div>
+            <div class="text-slate-500 mb-0.5">Vote Points</div>
+            <div class="text-amber-300" id="AccInfoWP">—</div>
           </div>
+          <div class="bg-slate-800/50 rounded-lg px-3 py-2 col-span-2" id="AccInfoAv" style="display:none;"></div>
           <div id="AccInfoZone" class="bg-slate-800/50 rounded-lg px-3 py-2 col-span-2" style="display:none;">
             <div class="text-slate-500 mb-0.5">Online — Zone</div>
             <div class="text-emerald-400 font-mono text-xs" id="AccInfoZId">—</div>
           </div>
           <div id="AccInfoBanRow" class="bg-red-950/40 border border-red-900/40 rounded-lg px-3 py-2 col-span-2" style="display:none;">
-            <div class="text-red-500 mb-0.5">Banned until</div>
-            <div class="text-red-300" id="AccInfoWP">—</div>
+            <div class="text-red-500 mb-0.5">Banned</div>
           </div>
         </div>
       </div>
@@ -366,6 +366,7 @@ var SrvrTmZone = 0;
 });
 
 SendDataWithAjax(1, [{{ user_id }}]);
+UserSearch();
 StartGlobalTimer();
 </script>
 {% endblock %}
