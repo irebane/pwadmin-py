@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Item Builder — pwAdmin{% endblock %}
+
+{% block head %}
+<script src="/static/js/conv.js?v=1"></script>
+<script src="/static/js/cards.js?v=1"></script>
+<script src="/static/js/refined.js?v=1"></script>
+<script src="/static/js/baseitemdata.js?v=1"></script>
+<script src="/static/js/ibuild.js?v=1"></script>
+{% endblock %}
+
+{% block content %}
+<div id="IBuildContainer">
+  <!-- Item builder UI is rendered by ibuild.js -->
+  <div id="IBuild"></div>
+</div>
+{% endblock %}

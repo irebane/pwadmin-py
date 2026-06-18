@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}G-Shop — pwAdmin{% endblock %}
+
+{% block content %}
+<div class="max-w-screen-xl mx-auto" x-data="gshop()">
+
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-sm font-semibold text-slate-300">G-Shop Editor</h1>
+    <div class="flex gap-2">
+      <input type="text" x-model="search" @input.debounce.300ms="filterItems()"
+        placeholder="Search items..."
+        class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 w-48">
+      <button @click="saveAll()"
+        class="text-xs px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded text-white font-semibold">
+        Save All
+      </button>
+      <button @click="showAdd=true"
+        class="text-xs px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded text-white font-semibold">
+        + Add Item
+      </button>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div x-show="statusMsg" x-cloak
+    :class="statusOk ? 'text-emerald-400 bg-emerald-950/40 border-emerald-900/50' : 'text-red-400 bg-red-950/40 border-red-900/50'"
+    class="mb-3 text-xs border rounded px-3 py-2" x-text="statusMsg"></div>
+
+  <!-- Item count -->
+  <div class="text-xs text-slate-500 mb-3">
+    <span x-text="filtered.length"></span> items
+    <span x-show="items.length !== filtered.length" x-cloak>
+      (filtered from <span x-text="items.length"></span>)
+    </span>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    <table class="w-full text-xs">
+      <thead class="border-b border-slate-800">
+        <tr class="text-slate-500">
+          <th class="px-3 py-2 text-left">#</th>
+          <th class="px-3 py-2 text-left">Item ID</th>
+          <th class="px-3 py-2 text-left">Name</th>
+          <th class="px-3 py-2 text-left">Cat</th>
+          <th class="px-3 py-2 text-left">Sub</th>
+          <th class="px-3 py-2 text-right">Qty</th>
+          <th class="px-3 py-2 text-right">Price (silver)</th>
+          <th class="px-3 py-2 text-right">Duration (s)</th>
+          <th class="px-3 py-2 text-right">Class mask</th>
+          <th class="px-3 py-2 text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="(item, i) in filtered" :key="item.idx">
+          <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
+            <td class="px-3 py-1.5 text-slate-600" x-text="item.idx"></td>
+            <td class="px-3 py-1.5 text-blue-400" x-text="item.item_id"></td>
+            <td class="px-3 py-1.5 text-slate-300" x-text="item.item_name || '—'"></td>
+            <td class="px-3 py-1.5" x-text="item.main_cat"></td>
+            <td class="px-3 py-1.5" x-text="item.sub_cat"></td>
+            <td class="px-3 py-1.5 text-right" x-text="item.qty"></td>
+            <td class="px-3 py-1.5 text-right" x-text="item.price"></td>
+            <td class="px-3 py-1.5 text-right" x-text="item.duration || 'Perm'"></td>
+            <td class="px-3 py-1.5 text-right" x-text="item.class_mask"></td>
+            <td class="px-3 py-1.5 text-center">
+              <button @click="editItem(item)"
+                class="text-xs px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded mr-1">Edit</button>
+              <button @click="deleteItem(item.idx)"
+                class="text-xs px-2 py-0.5 bg-red-900/50 hover:bg-red-800/50 text-red-400 rounded">Del</button>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="filtered.length === 0 && !loading">
+          <td colspan="10" class="px-3 py-8 text-center text-slate-600">No items</td>
+        </tr>
+        <tr x-show="loading">
+          <td colspan="10" class="px-3 py-8 text-center text-slate-600">Loading...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add/Edit modal -->
+  <div x-show="showAdd || editingItem" x-cloak
+    class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md">
+      <h2 class="text-sm font-semibold text-slate-300 mb-4" x-text="editingItem ? 'Edit Item' : 'Add Item'"></h2>
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Item ID</label>
+            <input type="number" x-model.number="form.item_id"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Item Name (label)</label>
+            <input type="text" x-model="form.item_name"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Main Cat</label>
+            <input type="number" x-model.number="form.main_cat"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Sub Cat</label>
+            <input type="number" x-model.number="form.sub_cat"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Qty</label>
+            <input type="number" x-model.number="form.qty" min="1"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Price (silver)</label>
+            <input type="number" x-model.number="form.price" min="0"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Duration (s, 0=perm)</label>
+            <input type="number" x-model.number="form.duration" min="0"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Class Mask</label>
+            <input type="number" x-model.number="form.class_mask" min="0"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2 mt-5">
+        <button @click="submitForm()"
+          class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-semibold text-white">
+          <span x-text="editingItem ? 'Update' : 'Add'"></span>
+        </button>
+        <button @click="closeModal()"
+          class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm text-slate-300">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function gshop() {
+  return {
+    items: [], filtered: [], search: '',
+    loading: true, statusMsg: '', statusOk: true,
+    showAdd: false, editingItem: null,
+    form: {item_id: 0, item_name: '', main_cat: 0, sub_cat: 0, qty: 1, price: 0, duration: 0, class_mask: 0},
+
+    async init() {
+      await this.load();
+    },
+
+    async load() {
+      this.loading = true;
+      try {
+        const r = await fetch('/api/gshop');
+        if (r.ok) {
+          const d = await r.json();
+          this.items = d.items || [];
+          this.filterItems();
+        }
+      } catch(e) { this.statusMsg = 'Failed to load'; this.statusOk = false; }
+      this.loading = false;
+    },
+
+    filterItems() {
+      const q = this.search.toLowerCase();
+      this.filtered = q
+        ? this.items.filter(i => (i.item_name||'').toLowerCase().includes(q) || String(i.item_id).includes(q))
+        : [...this.items];
+    },
+
+    editItem(item) {
+      this.editingItem = item;
+      this.form = {...item};
+    },
+
+    closeModal() {
+      this.showAdd = false;
+      this.editingItem = null;
+      this.form = {item_id: 0, item_name: '', main_cat: 0, sub_cat: 0, qty: 1, price: 0, duration: 0, class_mask: 0};
+    },
+
+    async submitForm() {
+      const url = this.editingItem ? `/api/gshop/${this.editingItem.idx}` : '/api/gshop';
+      const method = this.editingItem ? 'PUT' : 'POST';
+      const r = await fetch(url, {
+        method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(this.form),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        this.statusMsg = 'Saved successfully';
+        this.statusOk = true;
+        this.closeModal();
+        await this.load();
+      } else {
+        this.statusMsg = d.detail || 'Save failed';
+        this.statusOk = false;
+      }
+      setTimeout(() => this.statusMsg = '', 3000);
+    },
+
+    async deleteItem(idx) {
+      if (!confirm('Delete this item?')) return;
+      const r = await fetch(`/api/gshop/${idx}`, {method: 'DELETE'});
+      if (r.ok) {
+        await this.load();
+        this.statusMsg = 'Deleted'; this.statusOk = true;
+      } else {
+        this.statusMsg = 'Delete failed'; this.statusOk = false;
+      }
+      setTimeout(() => this.statusMsg = '', 3000);
+    },
+
+    async saveAll() {
+      const r = await fetch('/api/gshop/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(this.items),
+      });
+      if (r.ok) {
+        this.statusMsg = 'All saved'; this.statusOk = true;
+      } else {
+        this.statusMsg = 'Save failed'; this.statusOk = false;
+      }
+      setTimeout(() => this.statusMsg = '', 3000);
+    },
+  };
+}
+</script>
+{% endblock %}

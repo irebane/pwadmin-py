@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pwAdmin — Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen antialiased">
+
+<nav class="bg-slate-900 border-b border-slate-800 h-12 flex items-center px-5">
+  <span class="text-blue-400 font-bold text-sm">&#9876; PW Admin</span>
+</nav>
+
+<div class="flex items-center justify-center min-h-[calc(100vh-3rem)] py-10 px-4"
+     x-data="landing()">
+  <div class="w-full max-w-sm">
+
+    <!-- Login / Register card -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+
+      <!-- Tabs -->
+      <div class="flex border-b border-slate-800">
+        <button @click="tab='login'"
+          class="flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors"
+          :class="tab==='login'
+            ? 'text-blue-400 border-b-2 border-blue-500'
+            : 'text-slate-500 hover:text-slate-300'">
+          Login
+        </button>
+        <button @click="tab='register'"
+          class="flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors"
+          :class="tab==='register'
+            ? 'text-blue-400 border-b-2 border-blue-500'
+            : 'text-slate-500 hover:text-slate-300'">
+          Register
+        </button>
+      </div>
+
+      <!-- Login form -->
+      <div x-show="tab==='login'" class="p-5">
+        <form @submit.prevent="doLogin()">
+          <div class="mb-3">
+            <label class="block text-xs text-slate-500 mb-1.5">Username</label>
+            <input type="text" x-model="loginUser" maxlength="20" autocomplete="username" required
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="Enter username">
+          </div>
+          <div class="mb-4">
+            <label class="block text-xs text-slate-500 mb-1.5">Password</label>
+            <div class="relative">
+              <input :type="showLoginPw ? 'text' : 'password'" x-model="loginPass"
+                maxlength="20" autocomplete="current-password" required
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                placeholder="Enter password">
+              <button type="button" @click="showLoginPw = !showLoginPw"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-base leading-none select-none">
+                <span x-text="showLoginPw ? '&#128584;' : '&#128065;'"></span>
+              </button>
+            </div>
+          </div>
+          <div x-show="loginMsg" x-cloak
+            class="mb-3 text-xs text-red-400 bg-red-950/40 border border-red-900/50 rounded-lg px-3 py-2"
+            x-text="loginMsg"></div>
+          <button type="submit" :disabled="loginLoading"
+            class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-semibold transition-colors">
+            <span x-show="!loginLoading">Sign in</span>
+            <span x-show="loginLoading">Signing in...</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Register form -->
+      <div x-show="tab==='register'" x-cloak class="p-5">
+        <form @submit.prevent="doRegister()">
+          <div class="mb-3">
+            <label class="block text-xs text-slate-500 mb-1.5">Username</label>
+            <input type="text" x-model="regUser" maxlength="20" autocomplete="username" required
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="4-20 alphanumeric chars">
+          </div>
+          <div class="mb-3">
+            <label class="block text-xs text-slate-500 mb-1.5">Password</label>
+            <input type="password" x-model="regPass" maxlength="20" autocomplete="new-password" required
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="4-20 alphanumeric chars">
+          </div>
+          <div class="mb-4">
+            <label class="block text-xs text-slate-500 mb-1.5">Email</label>
+            <input type="email" x-model="regEmail" autocomplete="email" required
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+              placeholder="your@email.com">
+          </div>
+          <div x-show="regMsg" x-cloak
+            :class="regOk ? 'text-emerald-400 bg-emerald-950/40 border-emerald-900/50' : 'text-red-400 bg-red-950/40 border-red-900/50'"
+            class="mb-3 text-xs border rounded-lg px-3 py-2"
+            x-text="regMsg"></div>
+          <button type="submit" :disabled="regLoading"
+            class="w-full py-2.5 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-semibold transition-colors">
+            <span x-show="!regLoading">Create Account</span>
+            <span x-show="regLoading">Creating...</span>
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function landing() {
+  return {
+    tab: 'login',
+    loginUser: '', loginPass: '', showLoginPw: false, loginMsg: '', loginLoading: false,
+    regUser: '', regPass: '', regEmail: '', regMsg: '', regOk: false, regLoading: false,
+
+    async doLogin() {
+      this.loginLoading = true;
+      this.loginMsg = '';
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username: this.loginUser, password: this.loginPass}),
+        });
+        if (r.ok) {
+          location.href = '/account';
+        } else {
+          const d = await r.json().catch(() => ({}));
+          this.loginMsg = d.detail || 'Login failed';
+        }
+      } catch(e) {
+        this.loginMsg = 'Network error';
+      } finally {
+        this.loginLoading = false;
+      }
+    },
+
+    async doRegister() {
+      this.regLoading = true;
+      this.regMsg = '';
+      this.regOk = false;
+      try {
+        const r = await fetch('/api/register', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username: this.regUser, password: this.regPass, email: this.regEmail}),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) {
+          this.regOk = true;
+          this.regMsg = 'Account created! You can now log in.';
+          this.tab = 'login';
+          this.loginUser = this.regUser;
+        } else {
+          this.regMsg = d.detail || 'Registration failed';
+        }
+      } catch(e) {
+        this.regMsg = 'Network error';
+      } finally {
+        this.regLoading = false;
+      }
+    },
+  };
+}
+</script>
+</body>
+</html>
