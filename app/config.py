@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     akey1: str = ""
     akey2: str = ""
 
+    server_ver: int = 75
+
     start_gold: int = 0
     start_point: int = 0
     max_web_point: int = 9999

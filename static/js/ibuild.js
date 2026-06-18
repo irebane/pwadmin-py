@@ -2718,7 +2718,7 @@ function ChangeElfGear(id){
 	var reqLv = parseInt(myArr[1], 10);
 	if (elfLevel < reqLv){
 		e.selectedIndex = 0;
-		document.getElementById("EGearImg"+id).src="../images/icons/slot.png";
+		document.getElementById("EGearImg"+id).src="/static/images/icons/slot.png";
 		document.getElementById("Inp_E_GearId"+id).value = 0;
 		document.getElementById('Inp_E_GearName'+id).value = "";
 		alert("This item need level "+reqLv+", but your genie is level "+elfLevel+"!");
@@ -2726,11 +2726,11 @@ function ChangeElfGear(id){
 		if (GearData != "0"){
 			document.getElementById("Inp_E_GearId"+id).value = myArr[0];
 			document.getElementById("Inp_E_GearName"+id).value = myArr[2];
-			document.getElementById("EGearImg"+id).src="../images/icons/"+myArr[0]+".gif";
+			document.getElementById("EGearImg"+id).src="/static/images/icons/"+myArr[0]+".gif";
 		}else{
 			document.getElementById("Inp_E_GearId"+id).value = 0;
 			document.getElementById("Inp_E_GearName"+id).value = "";
-			document.getElementById("EGearImg"+id).src="../images/icons/slot.png";
+			document.getElementById("EGearImg"+id).src="/static/images/icons/slot.png";
 		}
 	}
 }
@@ -2890,7 +2890,7 @@ function getPItemData(e){
 		tmpdesc=myArr[5];
 	}
 	eId.value = itmId;
-	document.getElementById('item_icon').src = "../images/icons/"+itmId+".gif";
+	document.getElementById('item_icon').src = "/static/images/icons/"+itmId+".gif";
 	//eId.value = itmId.replace(/'/g, "&#39;");
 	if ((cat == "1")||(cat == "2")||(cat == "3")){
 		ItmTit = document.getElementById("Gear"+cat+"_Name");

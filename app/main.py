@@ -83,6 +83,3 @@ async def server_page(request: Request):
     return templates.TemplateResponse(request, "server/index.html")
 
 
-@app.get("/item-builder")
-async def item_builder_page(request: Request):
-    return templates.TemplateResponse(request, "item_builder/index.html")
