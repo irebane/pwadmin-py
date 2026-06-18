@@ -43,20 +43,63 @@ def update_conf_key(content: str, key: str, value: str) -> str:
     return content + f"\n{key} = {value}\n"
 
 
+# CMVal: class index → bit value in allow_login_class_mask
+_CM_VAL = {1: 1, 2: 2, 3: 16, 4: 8, 5: 128, 6: 64, 7: 4, 8: 32}
+
+
+def _read_threadpool_workers(path: Path) -> int | None:
+    try:
+        in_tp = False
+        for ln in path.read_text().splitlines():
+            ln = ln.strip()
+            if ln.lower() == "[threadpool]":
+                in_tp = True
+            elif in_tp and ln.startswith("["):
+                break
+            elif in_tp and ln.lower().startswith("threads"):
+                m = re.search(r'\(1,(\d+)\)', ln)
+                if m:
+                    return int(m.group(1))
+    except Exception:
+        pass
+    return None
+
+
+def _read_glinkd_count_from_conf() -> int:
+    path = Path(settings.server_path) / "gamed" / "gmserver.conf"
+    try:
+        in_ps = False
+        for ln in path.read_text().splitlines():
+            ln = ln.strip()
+            if ln.lower() == "[providerservers]":
+                in_ps = True
+            elif in_ps and ln.startswith("["):
+                break
+            elif in_ps and ln.lower().startswith("count="):
+                return max(1, int(ln[6:]) - 2)
+    except Exception:
+        pass
+    return 2
+
+
 async def read_game_config() -> dict:
-    """Read current values from ptemplate.conf, gamesys.conf, gmserver.conf."""
     result = {}
+    init_log = []
+    classes_data = settings.pw_classes_dict  # {int: name}
+
     try:
         ptemplate = _server_file_path(9, "ptemplate.conf")
         content = await read_conf(ptemplate)
-        result["debug_mode"] = int(parse_conf_key(content, "debug_command_mode") == "active")
+        debug_val = (parse_conf_key(content, "debug_command_mode") or "").lower()
+        result["debug_mode"] = int(debug_val in ("active", "1"))
         result["class_mask"] = int(parse_conf_key(content, "allow_login_class_mask") or 0)
         result["exp_bonus"] = int(parse_conf_key(content, "exp_bonus") or 0)
         result["sp_bonus"] = int(parse_conf_key(content, "sp_bonus") or 0)
         result["drop_bonus"] = int(parse_conf_key(content, "drop_bonus") or 0)
         result["money_bonus"] = int(parse_conf_key(content, "money_bonus") or 0)
-    except (FileNotFoundError, ValueError):
-        pass
+        init_log.append("ptemplate.conf loaded")
+    except Exception:
+        init_log.append(f"Error: ptemplate.conf not found — check SERVER_PATH in .env")
 
     try:
         gamesys = _server_file_path(7, "gamesys.conf")
@@ -64,8 +107,37 @@ async def read_game_config() -> dict:
         result["pvp"] = int(parse_conf_key(content, "pvp") or 0)
         result["tw"] = int(parse_conf_key(content, "battlefield") or 0)
         result["name_max_len"] = int(parse_conf_key(content, "max_name_len") or 16)
-    except (FileNotFoundError, ValueError):
-        pass
+        result["name_insens"] = int(parse_conf_key(content, "case_insensitive") or 0)
+        init_log.append("gamesys.conf loaded")
+    except Exception:
+        init_log.append("Warning: gamesys.conf not readable")
+
+    glinkd_count = _read_glinkd_count_from_conf()
+    result["glinkd_count"] = glinkd_count
+    init_log.append(f"gmserver.conf: {glinkd_count} glinkd instance(s)")
+
+    db_w = _read_threadpool_workers(Path(settings.server_path) / "gamedbd" / "gamesys.conf")
+    result["db_workers"] = db_w if db_w is not None else 2
+    if db_w is not None:
+        init_log.append(f"gamedbd: {db_w} worker(s)")
+
+    name_w = _read_threadpool_workers(Path(settings.server_path) / "uniquenamed" / "gamesys.conf")
+    result["name_workers"] = name_w if name_w is not None else 1
+    if name_w is not None:
+        init_log.append(f"uniquenamed: {name_w} worker(s)")
+
+    mask = result.get("class_mask", 0)
+    result["classes"] = [
+        {
+            "id": i,
+            "name": classes_data.get(i, f"Class{i}"),
+            "value": _CM_VAL.get(i, 0),
+            "checked": bool(mask & _CM_VAL.get(i, 0)),
+        }
+        for i in range(1, len(classes_data) + 1)
+        if i in classes_data
+    ]
+    result["init_log"] = init_log
 
     return result
 

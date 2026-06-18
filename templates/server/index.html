@@ -11,10 +11,125 @@
     <!-- ── LEFT COLUMN (col-span-2) ── -->
     <div class="lg:col-span-2 flex flex-col gap-5">
 
-      <!-- placeholder config card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Server Config</h2>
-        <p class="text-xs text-slate-600 italic">Config form coming soon…</p>
+      <!-- SERVER CONFIG ─────────────────────────────────────────── -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-slate-800">
+          <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Server Config</h2>
+        </div>
+        <div class="p-5 space-y-5">
+
+          <!-- Class mask -->
+          <div>
+            <div class="text-xs text-slate-500 mb-2">Allowed Classes
+              <span class="ml-2 text-slate-700 font-mono" x-text="'mask: ' + classMask"></span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <template x-for="cls in classes" :key="cls.id">
+                <label class="flex items-center gap-2 cursor-pointer select-none group">
+                  <input type="checkbox" :checked="cls.checked"
+                    @change="cls.checked = $event.target.checked; calcMask()"
+                    class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer">
+                  <span class="text-xs text-slate-300 group-hover:text-white transition"
+                    x-text="cls.name"></span>
+                </label>
+              </template>
+            </div>
+          </div>
+
+          <!-- Rates -->
+          <div>
+            <div class="text-xs text-slate-500 mb-2">Rates</div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">EXP Bonus</label>
+                <input type="number" x-model.number="xp" min="0"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">SP Bonus</label>
+                <input type="number" x-model.number="sp" min="0"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">Drop Bonus</label>
+                <input type="number" x-model.number="drop" min="0"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">Gold Bonus</label>
+                <input type="number" x-model.number="gold" min="0"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- Flags -->
+          <div>
+            <div class="text-xs text-slate-500 mb-2">Flags</div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <label class="flex items-center gap-2 cursor-pointer select-none group">
+                <input type="checkbox" x-model="debug"
+                  class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer">
+                <span class="text-xs text-slate-300 group-hover:text-white transition">Debug Mode</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer select-none group">
+                <input type="checkbox" x-model="pvp"
+                  class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer">
+                <span class="text-xs text-slate-300 group-hover:text-white transition">PvP</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer select-none group">
+                <input type="checkbox" x-model="tw"
+                  class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer">
+                <span class="text-xs text-slate-300 group-hover:text-white transition">Territory War</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer select-none group">
+                <input type="checkbox" x-model="caseInsens"
+                  class="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer">
+                <span class="text-xs text-slate-300 group-hover:text-white transition">Case Insensitive</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Settings -->
+          <div>
+            <div class="text-xs text-slate-500 mb-2">Settings</div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">Max Name Length</label>
+                <input type="number" x-model.number="maxName" min="6" max="32"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">Game Link Instances</label>
+                <input type="number" x-model.number="glinkdCount" min="1" max="8"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">DB Workers</label>
+                <input type="number" x-model.number="dbWorkers" min="1" max="32"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-600 mb-1">Name Workers</label>
+                <input type="number" x-model.number="nameWorkers" min="1" max="8"
+                  class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- Save -->
+          <div>
+            <button @click="saveSettings()" :disabled="saving"
+              class="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition">
+              <span x-show="!saving">Save All Settings</span>
+              <span x-show="saving">Saving…</span>
+            </button>
+            <p x-show="cfgMsg" x-text="cfgMsg"
+              :class="cfgOk ? 'text-emerald-400' : 'text-red-400'"
+              class="mt-2 text-xs text-center font-mono"></p>
+          </div>
+
+        </div>
       </div>
 
     </div><!-- end left col -->
@@ -161,14 +276,20 @@
 <script>
 function serverPage() {
   return {
+    /* status */
     memTotal: 0, memUsed: 0, memFree: 0,
-    services: [],
-    glinkd: [],
-    glinkdOpen: false,
+    services: [], glinkd: [], glinkdOpen: false,
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
 
+    /* config */
+    classMask: 0, classes: [],
+    debug: false, xp: 0, sp: 0, drop: 0, gold: 0,
+    pvp: false, tw: false, caseInsens: false,
+    maxName: 16, glinkdCount: 2, dbWorkers: 2, nameWorkers: 1,
+    saving: false, cfgMsg: '', cfgOk: true,
+
     async init() {
-      await this.refreshStatus();
+      await Promise.all([this.refreshStatus(), this.loadConfig()]);
       setInterval(() => this.refreshStatus(), 5000);
     },
 
@@ -177,12 +298,69 @@ function serverPage() {
         const r = await fetch('/api/server/status');
         if (!r.ok) return;
         const d = await r.json();
-        this.memTotal   = d.mem_total;
-        this.memUsed    = d.mem_used;
-        this.memFree    = d.mem_free;
-        this.services   = d.services || [];
-        this.glinkd     = d.glinkd   || [];
+        this.memTotal = d.mem_total;
+        this.memUsed  = d.mem_used;
+        this.memFree  = d.mem_free;
+        this.services = d.services || [];
+        this.glinkd   = d.glinkd   || [];
       } catch(e) {}
+    },
+
+    async loadConfig() {
+      try {
+        const r = await fetch('/api/server/config');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.classMask   = d.class_mask   ?? 0;
+        this.classes     = d.classes      ?? [];
+        this.debug       = !!d.debug_mode;
+        this.xp          = d.exp_bonus    ?? 0;
+        this.sp          = d.sp_bonus     ?? 0;
+        this.drop        = d.drop_bonus   ?? 0;
+        this.gold        = d.money_bonus  ?? 0;
+        this.pvp         = !!d.pvp;
+        this.tw          = !!d.tw;
+        this.caseInsens  = !!d.name_insens;
+        this.maxName     = d.name_max_len ?? 16;
+        this.glinkdCount = d.glinkd_count ?? 2;
+        this.dbWorkers   = d.db_workers   ?? 2;
+        this.nameWorkers = d.name_workers ?? 1;
+      } catch(e) {}
+    },
+
+    calcMask() {
+      this.classMask = this.classes.reduce((s, c) => c.checked ? s + c.value : s, 0);
+    },
+
+    async saveSettings() {
+      this.saving = true; this.cfgMsg = '';
+      try {
+        const csrf = document.cookie.split('; ').find(c => c.startsWith('csrf_token='))?.split('=')[1] || '';
+        const r = await fetch('/api/server/config', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+          body: JSON.stringify({
+            debug_mode:   this.debug    ? 1 : 0,
+            class_mask:   this.classMask,
+            exp_bonus:    this.xp,
+            sp_bonus:     this.sp,
+            drop_bonus:   this.drop,
+            money_bonus:  this.gold,
+            pvp:          this.pvp       ? 1 : 0,
+            tw:           this.tw        ? 1 : 0,
+            name_insens:  this.caseInsens ? 1 : 0,
+            name_max_len: this.maxName,
+            glinkd_count: this.glinkdCount,
+            db_workers:   this.dbWorkers,
+            name_workers: this.nameWorkers,
+          }),
+        });
+        const d = await r.json().catch(() => ({}));
+        this.cfgOk  = r.ok;
+        this.cfgMsg = r.ok ? (d.message || 'Saved!') : (d.detail || 'Save failed');
+      } catch(e) { this.cfgOk = false; this.cfgMsg = 'Network error'; }
+      this.saving = false;
+      setTimeout(() => this.cfgMsg = '', 5000);
     },
 
     async serverAction(action) {
