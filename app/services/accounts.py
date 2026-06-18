@@ -37,8 +37,8 @@ async def load_account_v2(db: AsyncSession, user_id: int) -> list:
     pt = row.fetchone()
     session_data = {
         "lastlogin": str(pt.lastlogin) if pt and pt.lastlogin else "",
-        "zoneid": int(pt.zoneid) if pt else 0,
-        "zonelocalid": int(pt.zonelocalid) if pt else 0,
+        "zoneid": int(pt.zoneid) if pt and pt.zoneid is not None else 0,
+        "zonelocalid": int(pt.zonelocalid) if pt and pt.zonelocalid is not None else 0,
     }
 
     # gold log — completed
@@ -171,11 +171,10 @@ async def list_accounts_v2(db: AsyncSession, sname: str, stype: int) -> list:
     # get online zone IDs
     online_map = {}
     if rows:
-        pts = await db.execute(
-            text("SELECT uid, zoneid FROM point WHERE uid IN :ids"),
-            {"ids": tuple(u.ID for u in rows) or (0,)}
-        )
-        online_map = {r.uid: r.zoneid for r in pts.fetchall()}
+        from app.models.users import Point
+        uid_list = [u.ID for u in rows]
+        pts = await db.execute(select(Point.uid, Point.zoneid).where(Point.uid.in_(uid_list)))
+        online_map = {r.uid: (r.zoneid or 0) for r in pts.fetchall()}
 
     gm_ids_set = set((await db.execute(select(Auth.userid).distinct())).scalars().all())
 
