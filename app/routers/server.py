@@ -1,8 +1,11 @@
 import asyncio
 import json
+import shutil
+import sys
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from app.deps import require_admin
+from app.config import settings
 from app.services.server_config import read_game_config, save_game_config
 from app.services.server_status import get_server_status, get_maps_status
 from pydantic import BaseModel
@@ -125,6 +128,55 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
         return {"ok": True}
     except asyncio.TimeoutError:
         raise HTTPException(504, detail="Zone command timed out")
+
+
+_ITEMS_JSON = Path("data/pw_items.json")
+_ITEMS_BAK  = Path("data/pw_items.json.bak")
+_TOOL       = Path(__file__).parent.parent.parent / "tools" / "generate_items.py"
+
+
+@router.post("/regenerate-items")
+async def regenerate_items(user: dict = Depends(require_admin)):
+    """Regenerate pw_items.json from the game server's elements.data."""
+    elements_path = f"{settings.server_path.rstrip('/')}/gamed/config/elements.data"
+    if not Path(elements_path).exists():
+        raise HTTPException(404, detail=f"elements.data not found at {elements_path}")
+    if not _TOOL.exists():
+        raise HTTPException(500, detail="generate_items.py tool not found")
+
+    # Backup existing
+    if _ITEMS_JSON.exists():
+        shutil.copy2(_ITEMS_JSON, _ITEMS_BAK)
+
+    loop = asyncio.get_event_loop()
+    try:
+        result = await loop.run_in_executor(None, _run_generate, elements_path)
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+    # Clear the LRU cache so the new file is picked up immediately
+    try:
+        from app.services.items import _load_items, _build_id_map
+        _load_items.cache_clear()
+        _build_id_map.cache_clear()
+    except Exception:
+        pass
+
+    return result
+
+
+def _run_generate(elements_path: str) -> dict:
+    import subprocess, json as _json
+    proc = subprocess.run(
+        [sys.executable, str(_TOOL), "--source", "elements",
+         "--elements", elements_path, "--no-backup"],
+        capture_output=True, text=True, timeout=120,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr or "generator failed")
+    data = _json.loads(_ITEMS_JSON.read_text(encoding="utf-8"))
+    total = sum(len(v) for subs in data.values() for v in subs.values())
+    return {"success": True, "total_items": total, "log": proc.stderr.strip()}
 
 
 class ControlBody(BaseModel):
