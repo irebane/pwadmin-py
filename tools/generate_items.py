@@ -94,20 +94,13 @@ _VALID_NAME = re.compile(
 def _is_valid_item_name(name: str) -> bool:
     if not name or len(name) < 3 or len(name) > 55:
         return False
-    # Must start with star symbols or uppercase letter (not mid-sentence text)
     clean = name.lstrip("☆★✦ ")
     if not clean or not (clean[0].isupper() or '一' <= clean[0] <= '鿿'):
         return False
-    # Must not be pure numbers
     if clean.replace(" ", "").isdigit():
         return False
-    # Reject strings that look like quest dialog (contain common sentence words mid-string)
-    if re.search(r'\b(you|the|and|for|have|that|this|with|from)\b', name, re.IGNORECASE):
-        return False
-    # Single-word names only valid if prefixed with star
-    has_star = bool(_STAR.intersection(name))
-    word_count = len(clean.split())
-    if word_count < 2 and not has_star:
+    # Reject quest dialog (sentence fragments)
+    if re.search(r'\b(you|the|and|for|have|that|this|with|from|your|are|was|will)\b', name, re.IGNORECASE):
         return False
     return bool(_VALID_NAME.match(name))
 
@@ -129,28 +122,34 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
     data = Path(elements_path).read_bytes()
     anchor = _build_anchor_map(existing or {})
 
-    # Collect all (item_id → name) pairs found in the binary
+    # Collect all (item_id → name) pairs found in the binary.
+    # Elements.data has multiple table types with different record layouts:
+    #   weapons/armor/jewelry: item_id at record+0, name at item_id+12
+    #   fashion/wings/misc:    item_id at record+0, name at item_id+4
+    #   some tables:           item_id at record+2, name at item_id+4  (2-byte aligned)
+    # We scan every 2 bytes and try names at both +4 and +12.
     found: dict[int, str] = {}
-    n = len(data) - 16
-    step = 4  # scan 4-byte aligned
+    n = len(data) - 20
 
     print(f"Scanning {len(data):,} bytes …", file=sys.stderr)
 
-    for i in range(0, n, step):
+    for i in range(0, n, 2):
         item_id = struct.unpack_from("<I", data, i)[0]
         if not (4000 <= item_id <= 40000):
             continue
-        # Name expected 12 bytes after item_id
-        name_off = i + 12
-        if name_off + 4 > len(data):
+        # Try name at +4 first (fashion/misc), then +12 (weapons/armor)
+        best = ""
+        for name_off in (i + 4, i + 12):
+            if name_off + 4 > len(data):
+                continue
+            name = _read_utf16le_str(data, name_off, max_chars=48)
+            if _is_valid_item_name(name) and len(name) > len(best):
+                best = name
+        if not best:
             continue
-        name = _read_utf16le_str(data, name_off, max_chars=48)
-        if not _is_valid_item_name(name):
-            continue
-        # Prefer longer name for same id (more specific table)
-        existing_name = found.get(item_id, "")
-        if len(name) > len(existing_name):
-            found[item_id] = name
+        # Prefer longer / more specific name for duplicate IDs across tables
+        if len(best) > len(found.get(item_id, "")):
+            found[item_id] = best
 
     print(f"Found {len(found):,} raw item_id/name pairs.", file=sys.stderr)
 
@@ -176,11 +175,10 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
                     result[t_str][s_str].append(entry)
 
     # Add newly found items not in existing (into type "8", subtype "99")
-    # Only accept items with a star quality prefix — filters out NPC/mob names
     existing_ids = set(anchor.keys())
     new_items = [
         (iid, name) for iid, name in sorted(found.items())
-        if iid not in existing_ids and bool(_STAR.intersection(name))
+        if iid not in existing_ids
     ]
     if new_items:
         result.setdefault("8", {}).setdefault("99", [])
