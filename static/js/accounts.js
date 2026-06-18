@@ -120,7 +120,9 @@ function SendNewData(){
 	SendDataWithAjax(13, [d1, d2, d3, d4, d5, d6, d7]);
 }
 function RequestUserData(n){
-	var uid = document.getElementById('LoadUserId').value;
+	var uid = n==1
+		? document.getElementById('LoadUserId').value
+		: (document.getElementById('CurUId').value || document.getElementById('LoadUserId').value);
 	var lid = document.getElementById('OldUId').value;
 	var dArr;
 	if (n==1){
