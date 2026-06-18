@@ -33,7 +33,10 @@
         else{h['X-CSRF-Token']=getCsrf();}
         opts.headers=h;
       }
-      return _fetch(url,opts);
+      return _fetch(url,opts).then(function(r){
+        if(r.status===401){window.location.href='/';return new Response('',{status:401});}
+        return r;
+      });
     };
     var _open=XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open=function(method){
