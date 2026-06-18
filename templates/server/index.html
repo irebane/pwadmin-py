@@ -375,6 +375,7 @@ function serverPage() {
         const d = await r.json().catch(() => ({}));
         this.cfgOk  = r.ok;
         this.cfgMsg = r.ok ? (d.message || 'Saved!') : (d.detail || 'Save failed');
+        if (r.ok) await this.loadConfig();
       } catch(e) { this.cfgOk = false; this.cfgMsg = 'Network error'; }
       this.saving = false;
       setTimeout(() => this.cfgMsg = '', 5000);
@@ -382,7 +383,16 @@ function serverPage() {
 
     async serverAction(action) {
       if (!confirm('Server ' + action + '?')) return;
-      alert('Server control not yet wired up.');
+      try {
+        const r = await fetch('/api/server/control', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action}),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { alert('Error: ' + (d.detail || action + ' failed')); return; }
+        setTimeout(() => this.refreshStatus(), 1500);
+      } catch(e) { alert('Network error'); }
     },
   };
 }

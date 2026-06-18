@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from app.deps import require_admin
 from app.services.server_config import read_game_config, save_game_config
@@ -44,3 +45,25 @@ async def save_config(body: ConfigBody, user: dict = Depends(require_admin)):
     if error:
         raise HTTPException(500, detail=error)
     return {"success": True, "message": "For changes you need (re)start the server!"}
+
+
+class ControlBody(BaseModel):
+    action: str  # start | stop | restart
+
+
+@router.post("/control")
+async def server_control(body: ControlBody, user: dict = Depends(require_admin)):
+    if body.action not in ("start", "stop", "restart"):
+        raise HTTPException(400, detail="Invalid action")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "sudo", "systemctl", body.action, "pwserver",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
+        if proc.returncode != 0:
+            raise HTTPException(500, detail=stderr.decode().strip() or f"systemctl {body.action} failed")
+        return {"success": True}
+    except asyncio.TimeoutError:
+        raise HTTPException(504, detail="systemctl timed out")
