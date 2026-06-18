@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from app.database import engine, Base
 from app.routers import auth, accounts, characters, game, maps, gshop, items, server, activity_log
+from app.auth.sessions import read_session
 
 
 @asynccontextmanager
@@ -68,7 +69,8 @@ async def root(request: Request):
 
 @app.get("/account")
 async def account_page(request: Request):
-    return templates.TemplateResponse(request, "account/index.html")
+    session = read_session(request) or {}
+    return templates.TemplateResponse(request, "account/index.html", {"user_id": session.get("id", 0), "is_admin": session.get("is_admin", False)})
 
 
 @app.get("/gshop")
