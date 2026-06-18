@@ -6441,7 +6441,10 @@ function ItemDataModWithAjax(typ, obj) {
 					if (fdbck[0]["error"]!=""){
 						alert(fdbck[0]["error"]);
 					}else{
-						document.getElementById('MailResponse').innerHTML = "<font color='#4ade80'><b><i> "+fdbck[0]["success"]+" </i></b></font>";
+						var _iName = (document.getElementById('Inp_Title')||{}).value || 'Item';
+						var _cSel = document.getElementById('send-char');
+						var _cName = (_cSel && _cSel.selectedIndex >= 0) ? _cSel.options[_cSel.selectedIndex].text : '';
+						document.getElementById('MailResponse').innerHTML = "<font color='#4ade80'><b><i> "+_iName+" sent to "+_cName+"! </i></b></font>";
 					}
 				}else{
 					document.getElementById('MailResponse').innerHTML = "<font color='red'><b><i> Error: unable send mail(s) </i></b></font>";
