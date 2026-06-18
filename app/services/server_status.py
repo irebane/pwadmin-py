@@ -93,7 +93,21 @@ async def get_server_status() -> dict:
     except Exception:
         pass
 
+    cpu_pct = 0
+    try:
+        s1 = Path("/proc/stat").read_text().splitlines()[0].split()[1:]
+        await asyncio.sleep(0.2)
+        s2 = Path("/proc/stat").read_text().splitlines()[0].split()[1:]
+        idle1, idle2 = int(s1[3]), int(s2[3])
+        total1 = sum(int(x) for x in s1)
+        total2 = sum(int(x) for x in s2)
+        dt = total2 - total1
+        cpu_pct = round((1 - (idle2 - idle1) / dt) * 100) if dt else 0
+    except Exception:
+        pass
+
     return {
+        "cpu_pct": cpu_pct,
         "mem_total": mem_total,
         "mem_used": mem_used,
         "mem_free": mem_free,
