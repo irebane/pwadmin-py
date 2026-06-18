@@ -96,6 +96,24 @@ _VALID_NAME = re.compile(
 _NA_PREFIX = re.compile(r'^N/A\s*')
 _CJK = re.compile(r'[一-鿿]')
 
+# NPC job titles and zone labels that appear in element tables but are not items
+_NPC_WORDS = re.compile(
+    r'\b(Blacksmith|Apothecary|Tailor|Jeweler|Herbalist|Craftsman|Warehouse|'
+    r'Merchant|Vendor|Banker|Bounty|Trainer|Healer|Auctioneer|'
+    r'Dealer|Trader|Supplier|Refiner|Teleporter|Sculptor|'
+    r'Guard|Warden|Sentry|Ambassador|Envoy|Emissary|'
+    r'Elder|Master|Chief|Captain|General|Commander|'
+    r'Traveling|RootNode|Checkpoint|Courier)\b',
+    re.IGNORECASE,
+)
+# Stat descriptions, abbreviated or full, and bare UI strings
+_STAT_NAME = re.compile(
+    r'\b(Damage|Defense|Accuracy|Evasion|HP|MP|Mana|Mdef|Pdef|'
+    r'Dmg|Atk|Def|Acc|Eva|Crit|Phys|Mag|Max)\b.{0,6}[+\-]\d+'
+    r'|'
+    r'\bPage\s+\d+'  # "Page 1", "Page 2" — UI pagination strings
+)
+
 
 def _is_cjk(name: str) -> bool:
     return bool(_CJK.search(name))
@@ -111,6 +129,12 @@ def _is_valid_item_name(name: str) -> bool:
         return False
     # Reject quest dialog (sentence fragments)
     if re.search(r'\b(you|the|and|for|have|that|this|with|from|your|are|was|will)\b', name, re.IGNORECASE):
+        return False
+    # Reject NPC job titles and zone/UI labels
+    if _NPC_WORDS.search(name):
+        return False
+    # Reject stat description strings
+    if _STAT_NAME.search(name):
         return False
     return bool(_VALID_NAME.match(name))
 
@@ -208,10 +232,16 @@ def from_elements(elements_path: str, existing: dict | None = None) -> dict:
 
     # Add newly found items not in existing (into type "8", subtype "99")
     existing_ids = set(anchor.keys())
-    new_items = [
-        (iid, name) for iid, (name, is_eng) in sorted(found.items())
-        if iid not in existing_ids and is_eng
-    ]
+    # Deduplicate by name — same NPC/mob in multiple zones shares one name
+    seen_names: set[str] = set()
+    new_items = []
+    for iid, (name, is_eng) in sorted(found.items()):
+        if iid in existing_ids or not is_eng:
+            continue
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        new_items.append((iid, name))
     if new_items:
         result.setdefault("8", {}).setdefault("99", [])
         for iid, name in new_items:
