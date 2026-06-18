@@ -37,8 +37,12 @@ class Settings(BaseSettings):
         return {int(k): v for k, v in json.loads(self.pw_classes).items()}
 
     @property
-    def gs_zones_dict(self) -> dict[int, str]:
-        return {int(k): v for k, v in json.loads(self.gs_zones).items()}
+    def gs_zones_dict(self) -> dict[str, dict]:
+        raw = json.loads(self.gs_zones)
+        return {
+            k: (v if isinstance(v, dict) else {"name": v})
+            for k, v in raw.items()
+        }
 
     @property
     def server_files_dict(self) -> dict[int, str]:

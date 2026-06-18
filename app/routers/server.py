@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.deps import require_admin
 from app.services.server_config import read_game_config, save_game_config
-from app.services.server_status import get_daemon_status, get_ram_usage
+from app.services.server_status import get_server_status, get_maps_status
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/server")
@@ -9,9 +9,12 @@ router = APIRouter(prefix="/api/server")
 
 @router.get("/status")
 async def server_status(user: dict = Depends(require_admin)):
-    daemons = await get_daemon_status()
-    ram = await get_ram_usage()
-    return {"daemons": daemons, "ram": ram}
+    return await get_server_status()
+
+
+@router.get("/maps")
+async def maps_status(user: dict = Depends(require_admin)):
+    return await get_maps_status()
 
 
 @router.get("/config")
