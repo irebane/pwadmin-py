@@ -589,7 +589,7 @@ function ChangeOtherType(){
 		document.getElementById('StarChartDiv').style.display="block";			
 	}
 	ChangeMaskType();
-	getPItemData(document.getElementById('SItmC4S'+OST));
+	var _oe=document.getElementById('SItmC4S'+OST); if(_oe) getPItemData(_oe);
 }
 
 function ChangeUtilType(){
@@ -598,7 +598,7 @@ function ChangeUtilType(){
 	var OST = SOST.options[SOST.selectedIndex].value;
 	ChangeItemList(CIType, SIType, "U", OST);
 	SIType = OST;
-	getPItemData(document.getElementById('SItmC5S'+OST));
+	var _ue=document.getElementById('SItmC5S'+OST); if(_ue) getPItemData(_ue);
 	if (SIType == 1){
 		SelM.selectedIndex = 11;
 	}else if (SIType == 4){
@@ -616,7 +616,7 @@ function ChangeMatType(){
 	var OST = SOST.options[SOST.selectedIndex].value;
 	ChangeItemList(CIType, SIType, "M", OST);
 	SIType = OST;
-	getPItemData(document.getElementById('SItmC6S'+OST));	
+	var _me=document.getElementById('SItmC6S'+OST); if(_me) getPItemData(_me);
 }
 
 function ChangeCardType(){
@@ -625,7 +625,7 @@ function ChangeCardType(){
 	var OST = SOST.options[SOST.selectedIndex].value;
 	ChangeItemList(CIType, SIType, "C", OST);
 	SIType = OST;
-	getPItemData(document.getElementById('SItmC8S'+OST));
+	var _ce=document.getElementById('SItmC8S'+OST); if(_ce) getPItemData(_ce);
 	document.getElementById('Sel_Mask1').selectedIndex = 28;
 	document.getElementById('Sel_Mask2').value = document.getElementById('Sel_Mask1').options[28].value;
 }
@@ -636,7 +636,7 @@ function ChangeFashType(){
 	var OST = SOST.options[SOST.selectedIndex].value;
 	ChangeItemList(CIType, SIType, "F", OST);
 	SIType = OST;
-	getPItemData(document.getElementById('SItmC7S'+OST));
+	var _fe=document.getElementById('SItmC7S'+OST); if(_fe) getPItemData(_fe);
 	var fTyp=0;
 	if ((SIType == 1) || (SIType == 2)){
 		fTyp = 13;

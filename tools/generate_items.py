@@ -328,10 +328,16 @@ def _read_field(data: bytes, pos: int, ftype: str) -> tuple[object, int]:
 
 
 _NA_PREFIX = re.compile(r'^N/A\s*')
+# Matches any character outside printable ASCII (excludes CJK, Cyrillic, etc.)
+_NON_ASCII = re.compile(r'[^\x20-\x7E]')
 
 
 def _read_name(raw: str) -> str:
-    return _NA_PREFIX.sub('', raw).strip()
+    name = _NA_PREFIX.sub('', raw).strip()
+    # Skip non-English / debug items (names containing CJK or other non-ASCII)
+    if _NON_ASCII.search(name):
+        return ''
+    return name
 
 
 # ── elements.data parser ───────────────────────────────────────────────────────
