@@ -144,6 +144,16 @@ async def read_game_config() -> dict:
 
 async def save_game_config(data: dict) -> str:
     """Write values to the config files. Returns '' on success or error message."""
+    errors = []
+
+    async def _try_write(label: str, path: Path, content: str) -> bool:
+        try:
+            await write_conf_atomic(path, content)
+            return True
+        except Exception as e:
+            errors.append(f"{label}: {e}")
+            return False
+
     try:
         ptemplate = _server_file_path(9, "ptemplate.conf")
         content = await read_conf(ptemplate)
@@ -157,8 +167,11 @@ async def save_game_config(data: dict) -> str:
             ("money_bonus", str(data.get("money_bonus", 0))),
         ]:
             content = update_conf_key(content, k, v)
-        await write_conf_atomic(ptemplate, content)
+        await _try_write("ptemplate.conf", ptemplate, content)
+    except Exception as e:
+        errors.append(f"ptemplate.conf: {e}")
 
+    try:
         gamesys = _server_file_path(7, "gamesys.conf")
         content = await read_conf(gamesys)
         for k, v in [
@@ -167,27 +180,36 @@ async def save_game_config(data: dict) -> str:
             ("max_name_len", str(data.get("name_max_len", 16))),
         ]:
             content = update_conf_key(content, k, v)
-        await write_conf_atomic(gamesys, content)
+        await _try_write("gamesys.conf", gamesys, content)
+    except Exception as e:
+        errors.append(f"gamesys.conf: {e}")
 
+    try:
         gamesys2 = _server_file_path(2, "gamesys.conf")
         content = await read_conf(gamesys2)
         content = update_conf_key(content, "case_insensitive", str(data.get("name_insens", 0)))
-        await write_conf_atomic(gamesys2, content)
+        await _try_write("uniquenamed/gamesys.conf", gamesys2, content)
+    except Exception as e:
+        errors.append(f"uniquenamed/gamesys.conf: {e}")
 
+    try:
         glinkd_count = max(1, int(data.get("glinkd_count", 1)))
         await _rebuild_gamesys_conf(glinkd_count)
         await _rebuild_gmserver_conf(glinkd_count, str(_server_file_path(7, "gmserver.conf")))
         await _rebuild_start_sh(glinkd_count)
+    except Exception as e:
+        errors.append(f"glinkd conf rebuild: {e}")
 
-        gamedbd_conf = _server_file_path(7, "gamesys.conf")
+    try:
+        gamedbd_conf = _server_file_path(4, "gamesys.conf")
         db_workers = max(1, int(data.get("db_workers", 1)))
         content = gamedbd_conf.read_text()
         content = re.sub(r'(\(1,)\d+(\))', rf'\g<1>{db_workers}\2', content)
-        await write_conf_atomic(gamedbd_conf, content)
-
-        return ""
+        await _try_write("gamedbd/gamesys.conf", gamedbd_conf, content)
     except Exception as e:
-        return str(e)
+        errors.append(f"gamedbd/gamesys.conf: {e}")
+
+    return "; ".join(errors) if errors else ""
 
 
 async def _rebuild_gamesys_conf(glinkd_count: int) -> None:
@@ -270,7 +292,7 @@ async def _rebuild_gmserver_conf(glinkd_count: int, path_str: str) -> None:
 
 async def _rebuild_start_sh(glinkd_count: int) -> None:
     path = Path("/home/start.sh")
-    if not path.exists():
+    if not path.exists() or not os.access(path, os.W_OK):
         return
     lines = path.read_text().splitlines(keepends=True)
     new_lines = []
