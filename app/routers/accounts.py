@@ -27,7 +27,12 @@ async def account_load(
 ):
     if not user.get("is_admin") and user.get("id") != body.id:
         return JSONResponse([{"error": "Unauthorized."}])
-    result = await load_account_v2(db, body.id, viewer_is_admin=user.get("is_admin", False))
+    result = await load_account_v2(
+        db, body.id,
+        viewer_is_admin=user.get("is_admin", False),
+        viewer_id=user.get("id", 0),
+        viewer_pw=user.get("pw", ""),
+    )
     return JSONResponse(result)
 
 

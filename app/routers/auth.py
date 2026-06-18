@@ -65,7 +65,7 @@ async def login(
         "id": user.ID,
         "name": user.name,
         "email": user.email,
-        "pw": user.passwd,
+        "pw": body.password,  # store plaintext like PHP ($_SESSION['pw'] = $p)
         "is_admin": is_admin,
     }
     create_session(response, session_data)

@@ -19,7 +19,8 @@ def _tool_resp(error="", success="", reloaduserdata="0", reloaduserlist="0"):
              "reloaduserdata": reloaduserdata, "reloaduserlist": reloaduserlist}]
 
 
-async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool = False) -> list:
+async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool = False,
+                          viewer_id: int = 0, viewer_pw: str = "") -> list:
     result = await db.execute(select(User).where(User.ID == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -77,7 +78,7 @@ async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool 
         "self": 0,
         "id": user.ID,
         "username": user.name,
-        "password": user.passwd,
+        "password": viewer_pw if viewer_id == user_id else "",
         "rank": 1 if is_gm else 0,
         "srank": 1 if viewer_is_admin else 0,
         "truename": user.truename or "",
