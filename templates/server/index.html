@@ -183,8 +183,35 @@
           </div>
         </div>
 
-        <!-- Services table -->
-        <div class="rounded-lg border border-slate-800 overflow-hidden mb-4">
+        <!-- Control progress (shown while stopping/starting/restarting) -->
+        <div x-show="controlling" x-cloak class="mb-4 rounded-lg border border-slate-700 bg-slate-800/40 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-slate-300" x-text="controlMsg"></span>
+            <span class="text-xs text-slate-500"
+              x-text="services.filter(s=>s.running).length + ' / ' + services.length + ' online'"></span>
+          </div>
+          <!-- Real progress bar based on live service counts -->
+          <div class="w-full bg-slate-700 rounded-full h-1.5 mb-3 overflow-hidden">
+            <div class="h-1.5 rounded-full bg-blue-500 transition-all duration-500"
+              :style="'width:' + (services.length ? Math.round(services.filter(s=>s.running).length / services.length * 100) : 0) + '%'">
+            </div>
+          </div>
+          <!-- Live service list -->
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+            <template x-for="svc in services" :key="svc.process">
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                  :class="svc.running ? 'bg-emerald-500' : 'bg-slate-600'"></span>
+                <span class="text-xs truncate"
+                  :class="svc.running ? 'text-slate-300' : 'text-slate-600'"
+                  x-text="svc.label"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Services table (hidden while controlling) -->
+        <div x-show="!controlling" class="rounded-lg border border-slate-800 overflow-hidden mb-4">
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-slate-800/80 text-slate-500">
@@ -227,20 +254,20 @@
 
         <!-- Action buttons -->
         <div class="flex gap-2">
-          <button x-show="anyRunning" @click="serverAction('stop')"
+          <button x-show="anyRunning && !controlling" @click="serverAction('stop')"
             class="flex-1 py-2 bg-red-700 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition">
             Stop Server
           </button>
-          <button x-show="!anyRunning" @click="serverAction('start')"
+          <button x-show="!anyRunning && !controlling" @click="serverAction('start')"
             class="flex-1 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition">
             Start Server
           </button>
-          <button @click="serverAction('restart')"
-            class="flex-1 py-2 bg-amber-700 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition">
+          <button :disabled="controlling" @click="serverAction('restart')"
+            class="flex-1 py-2 bg-amber-700 hover:bg-amber-600 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition">
             Reboot
           </button>
-          <button @click="refreshStatus()"
-            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-sm font-medium rounded-lg transition">
+          <button :disabled="controlling" @click="refreshStatus()"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-400 hover:text-slate-200 text-sm font-medium rounded-lg transition">
             ↻ Refresh
           </button>
         </div>
@@ -285,26 +312,6 @@
     </div>
   </div>
 </div>
-
-  <!-- SERVER CONTROL OVERLAY ─────────────────────────────────── -->
-  <div x-show="controlling" x-cloak
-       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-    <div class="bg-slate-900 border border-slate-700 rounded-xl p-8 w-full max-w-xs text-center shadow-2xl">
-      <!-- Spinner -->
-      <div class="flex justify-center mb-5">
-        <svg class="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-      </div>
-      <!-- Animated progress bar -->
-      <div class="w-full bg-slate-800 rounded-full h-1.5 mb-4 overflow-hidden">
-        <div class="h-1.5 rounded-full bg-blue-500 animate-pulse" style="width:100%"></div>
-      </div>
-      <p class="text-sm text-slate-300 font-medium" x-text="controlMsg"></p>
-      <p class="text-xs text-slate-600 mt-1.5">This may take up to 90 seconds</p>
-    </div>
-  </div>
 
 </div><!-- end x-data -->
 {% endblock %}
