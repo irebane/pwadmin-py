@@ -91,20 +91,26 @@ async def characters_load(body: CharLoadBody, user: dict = Depends(require_admin
 
 # ── Item packet log ──────────────────────────────────────────────────────────
 
-class ItemsLogBody(BaseModel):
-    action: str
-    itemlist: list[str] = []
+# ibuild.js sends action as a key: {"loadtempitems":1} not {"action":"loadtempitems"}
+def _parse_action_body(raw: dict) -> tuple[str, list[str]]:
+    action_keys = ("loadtempitems", "loadshopitems", "savetempitems", "sendpacket")
+    action = next((k for k in action_keys if k in raw), raw.get("action", ""))
+    itemlist = raw.get("itemlist", [])
+    return action, itemlist
 
 
 @router.post("/api/items/log")
-async def items_log(body: ItemsLogBody, user: dict = Depends(require_admin)):
-    if body.action == "loadtempitems":
+async def items_log(request: Request, user: dict = Depends(require_admin)):
+    raw = await request.json()
+    action, _ = _parse_action_body(raw)
+
+    if action == "loadtempitems":
         if not _PACKETS_FILE.exists():
             return []
         lines = [ln.strip() for ln in _PACKETS_FILE.read_text(encoding="utf-8").splitlines() if ln.strip()]
         return lines
 
-    if body.action == "loadshopitems":
+    if action == "loadshopitems":
         from app.database import async_session
         from sqlalchemy import text
         try:
@@ -125,39 +131,31 @@ async def items_log(body: ItemsLogBody, user: dict = Depends(require_admin)):
     raise HTTPException(400, detail="Invalid action")
 
 
-# ── Item packet save ─────────────────────────────────────────────────────────
-
-class ItemsSaveBody(BaseModel):
-    action: str
-    itemlist: list[str] = []
-
-
 @router.post("/api/items/save")
-async def items_save(body: ItemsSaveBody, user: dict = Depends(require_admin)):
-    if body.action == "savetempitems":
+async def items_save(request: Request, user: dict = Depends(require_admin)):
+    raw = await request.json()
+    action, itemlist = _parse_action_body(raw)
+    if action == "savetempitems":
         _PACKETS_FILE.parent.mkdir(exist_ok=True)
-        content = "\n".join(body.itemlist)
+        content = "\n".join(itemlist)
         _PACKETS_FILE.write_text(content, encoding="utf-8")
-        return {"success": f"{len(body.itemlist)} items saved"}
+        return {"success": f"{len(itemlist)} items saved"}
     raise HTTPException(400, detail="Invalid action")
 
 
 # ── Send game packets ─────────────────────────────────────────────────────────
 
-class PacketsBody(BaseModel):
-    action: str
-    itemlist: list[str] = []
-
-
 @router.post("/api/game/packets")
-async def game_packets(body: PacketsBody, user: dict = Depends(require_admin)):
-    if body.action != "sendpacket":
+async def game_packets(request: Request, user: dict = Depends(require_admin)):
+    raw = await request.json()
+    action, itemlist = _parse_action_body(raw)
+    if action != "sendpacket":
         raise HTTPException(400, detail="Invalid action")
 
     results = []
     mail_port = 29100
 
-    for item_str in body.itemlist:
+    for item_str in itemlist:
         parts = item_str.split("#")
         if len(parts) < 16:
             results.append({"error": f"Malformed packet: too few fields ({len(parts)})"})
