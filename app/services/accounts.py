@@ -82,7 +82,13 @@ async def load_account_v2(db: AsyncSession, user_id: int) -> list:
             "posX": 0, "posY": 0, "posZ": 0, "map": 0,
         }
 
-    bd = str(user.birthday.date()) + " 00:00:00" if user.birthday else "0000-00-00 00:00:00"
+    if user.birthday:
+        try:
+            bd = str(user.birthday.date()) + " 00:00:00"
+        except AttributeError:
+            bd = str(user.birthday)[:10] + " 00:00:00"
+    else:
+        bd = "0000-00-00 00:00:00"
     ct = str(user.creatime) if user.creatime else ""
 
     user_data = {
