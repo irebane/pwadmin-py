@@ -200,6 +200,6 @@ async def game_packets(request: Request, user: dict = Depends(require_admin)):
             mask=mask,
             money=money,
         )
-        results.append({"success": True} if ok else {"error": err})
+        results.append({"error": "", "success": "Item sent!"} if ok else {"error": err or "Send failed", "success": ""})
 
     return results
