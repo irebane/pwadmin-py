@@ -429,9 +429,11 @@
           <div x-show="showUpload" x-cloak
             class="bg-slate-800/60 border border-slate-700 rounded-lg p-4 space-y-3">
             <p class="text-xs text-slate-400">
-              Upload your <code class="text-slate-300 font-mono">elements.data</code> from
-              <code class="text-slate-300 font-mono">$SERVER/home/gamed/config/elements.data</code>.
-              It will be stored on the server and used when you click Regenerate.
+              Use this only if pwadmin runs on a <span class="text-slate-300">different machine</span> from
+              the game server. Upload <code class="text-slate-300 font-mono">elements.data</code> from
+              your game client folder or copy it from the game server
+              (<code class="text-slate-300 font-mono">/home/gamed/config/elements.data</code>).
+              The file is saved inside the admin app — the game server file is <span class="text-slate-300">never modified</span>.
             </p>
             <div class="flex gap-2 items-center">
               <input type="file" accept=".data" @change="uploadFile = $event.target.files[0]"
