@@ -87,6 +87,46 @@ async def activity_log(body: LogBody, user: dict = Depends(require_admin)):
     raise HTTPException(400, detail="Invalid action")
 
 
+class MapControlBody(BaseModel):
+    action: str   # start | stop | stopmaps | startmaps
+    zone: str = ""
+
+
+@router.post("/maps")
+async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)):
+    from app.config import settings
+    allowed = {"start", "stop", "stopmaps", "startmaps"}
+    if body.action not in allowed:
+        raise HTTPException(400, detail="Invalid action")
+
+    if body.action in ("stopmaps", "startmaps"):
+        await asyncio.create_subprocess_exec(
+            "sudo", "/home/gs_zone.sh", body.action,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            stdin=asyncio.subprocess.DEVNULL,
+        )
+        return {"ok": True}
+
+    # Single zone
+    zones = settings.gs_zones_dict
+    if body.zone not in zones:
+        raise HTTPException(400, detail=f"Unknown zone: {body.zone}")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "sudo", "/home/gs_zone.sh", body.action, body.zone,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+        output = stdout.decode(errors="replace").strip()
+        if "Already running" in output:
+            raise HTTPException(409, detail="Zone is already running.")
+        return {"ok": True}
+    except asyncio.TimeoutError:
+        raise HTTPException(504, detail="Zone command timed out")
+
+
 class ControlBody(BaseModel):
     action: str  # start | stop | restart
 

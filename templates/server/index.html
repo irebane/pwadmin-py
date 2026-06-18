@@ -324,6 +324,68 @@
         </div>
       </div>
 
+      <!-- MAP MANAGEMENT ───────────────────────────────────────────── -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-slate-800">
+          <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Map Management</h2>
+        </div>
+        <div class="p-4">
+
+          <div class="grid grid-cols-2 gap-4 mb-3">
+            <!-- Online maps -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs text-slate-400">Online</span>
+                <span class="text-xs text-emerald-600" x-text="onlineMaps.length + ' running'"></span>
+              </div>
+              <select size="11" x-model="selectedOnline"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 font-mono py-1 focus:outline-none focus:border-blue-500 cursor-pointer">
+                <template x-for="z in onlineMaps" :key="z.id">
+                  <option :value="z.id" x-text="z.id.padEnd(10) + z.name"></option>
+                </template>
+              </select>
+              <button @click="stopZone()"
+                class="mt-2 w-full py-1.5 bg-red-900/60 hover:bg-red-700 text-red-300 hover:text-white text-xs font-medium rounded-lg transition">
+                Stop Selected
+              </button>
+            </div>
+
+            <!-- Available maps -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs text-slate-400">Available</span>
+                <span class="text-xs text-slate-600" x-text="availMaps.length + ' offline'"></span>
+              </div>
+              <select size="11" x-model="selectedAvail"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 font-mono py-1 focus:outline-none focus:border-blue-500 cursor-pointer">
+                <template x-for="z in availMaps" :key="z.id">
+                  <option :value="z.id" x-text="z.id.padEnd(10) + z.name"></option>
+                </template>
+              </select>
+              <button @click="startZone()"
+                class="mt-2 w-full py-1.5 bg-emerald-900/60 hover:bg-emerald-700 text-emerald-300 hover:text-white text-xs font-medium rounded-lg transition">
+                Start Selected
+              </button>
+            </div>
+          </div>
+
+          <!-- Bulk actions -->
+          <div class="flex gap-2 pt-3 border-t border-slate-800">
+            <button @click="stopMapsKeepWorld()"
+              class="flex-1 py-1.5 bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 text-xs font-medium rounded-lg transition">
+              Stop Maps (Keep World)
+            </button>
+            <button @click="startAllMaps()"
+              class="flex-1 py-1.5 bg-slate-800 hover:bg-emerald-950 text-slate-400 hover:text-emerald-300 text-xs font-medium rounded-lg transition">
+              Start All Maps
+            </button>
+          </div>
+
+          <p x-show="mapMsg" x-text="mapMsg"
+            class="mt-2 text-xs font-mono text-amber-400"></p>
+        </div>
+      </div>
+
     </div><!-- end right col -->
   </div><!-- end grid -->
 
@@ -375,6 +437,7 @@ function serverPage() {
     cpuPct: 0, memTotal: 0, memUsed: 0, memFree: 0,
     services: [], glinkd: [], glinkdOpen: false,
     controlling: false, controlAction: '', controlPhase: '', controlEstimate: '', controlProgress: 0,
+    onlineMaps: [], availMaps: [], selectedOnline: '', selectedAvail: '', mapMsg: '',
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
     get controlMsg() {
       if (this.controlAction === 'stop')  return 'Stopping server services…';
@@ -408,8 +471,8 @@ function serverPage() {
     },
 
     async init() {
-      await Promise.all([this.refreshStatus(), this.loadConfig(), this.loadLog()]);
-      setInterval(() => this.refreshStatus(), 5000);
+      await Promise.all([this.refreshStatus(), this.refreshMaps(), this.loadConfig(), this.loadLog()]);
+      setInterval(() => { this.refreshStatus(); this.refreshMaps(); }, 5000);
     },
 
     async refreshStatus() {
@@ -504,6 +567,67 @@ function serverPage() {
       } catch(e) { this.cfgOk = false; this.cfgMsg = 'Network error'; }
       this.saving = false;
       setTimeout(() => this.cfgMsg = '', 5000);
+    },
+
+    async refreshMaps() {
+      try {
+        const r = await fetch('/api/server/maps');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.onlineMaps = d.online  || [];
+        this.availMaps  = d.offline || [];
+      } catch(e) {}
+    },
+
+    async mapAction(action, zone) {
+      this.mapMsg = '';
+      try {
+        const r = await fetch('/api/server/maps', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action, zone: zone || ''}),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { this.mapMsg = d.detail || action + ' failed'; return; }
+        this.addLog('Map ' + action + (zone ? ' ' + zone : '') + ' sent');
+        setTimeout(() => this.refreshMaps(), 1500);
+      } catch(e) { this.mapMsg = 'Request failed'; }
+    },
+
+    stopZone() {
+      if (!this.selectedOnline) { alert('Select a zone first.'); return; }
+      if (!confirm('Stop ' + this.selectedOnline + '?')) return;
+      this.mapAction('stop', this.selectedOnline);
+    },
+
+    startZone() {
+      if (!this.selectedAvail) { alert('Select a zone first.'); return; }
+      this.mapAction('start', this.selectedAvail);
+    },
+
+    stopMapsKeepWorld() {
+      if (!confirm('Stop all maps except World (gs01)?')) return;
+      this.mapAction('stopmaps', '');
+    },
+
+    async startAllMaps() {
+      if (!confirm('Start all available maps? This takes ~20 seconds.')) return;
+      this.mapMsg = 'Starting maps (staggered ~20s)…';
+      try {
+        const r = await fetch('/api/server/maps', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'startmaps', zone: ''}),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { this.mapMsg = d.detail || 'startmaps failed'; return; }
+        this.addLog('Start all maps sent');
+        let t = 0;
+        const iv = setInterval(() => {
+          t += 3000; this.refreshMaps();
+          if (t >= 25000) { clearInterval(iv); this.mapMsg = ''; }
+        }, 3000);
+      } catch(e) { this.mapMsg = 'Request failed'; }
     },
 
     async serverAction(action) {

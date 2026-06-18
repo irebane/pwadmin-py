@@ -117,23 +117,22 @@ async def get_server_status() -> dict:
 
 
 async def get_maps_status() -> dict:
+    import glob, re
     zones = settings.gs_zones_dict
     online, offline = [], []
-    try:
-        import glob
-        for zone_id, info in zones.items():
-            name = info.get("name", zone_id) if isinstance(info, dict) else info
-            running = False
-            for cmdfile in glob.glob("/proc/[0-9]*/cmdline"):
-                try:
-                    cmd = open(cmdfile, "rb").read().replace(b"\x00", b" ").decode(errors="replace")
-                    if f"./gs {zone_id}" in cmd:
-                        running = True
-                        break
-                except Exception:
-                    continue
-            entry = {"id": zone_id, "name": name}
-            (online if running else offline).append(entry)
-    except Exception:
-        pass
+    # Read all /proc cmdlines once
+    running_ids: set[str] = set()
+    for cmdfile in glob.glob("/proc/[0-9]*/cmdline"):
+        try:
+            cmd = open(cmdfile, "rb").read().replace(b"\x00", b" ").decode(errors="replace").strip()
+            m = re.match(r'\./gs\s+(\S+)', cmd)
+            if m:
+                running_ids.add(m.group(1))
+        except Exception:
+            continue
+    for zone_id, info in zones.items():
+        name = info.get("name", zone_id) if isinstance(info, dict) else info
+        ztype = info.get("type", "") if isinstance(info, dict) else ""
+        entry = {"id": zone_id, "name": name, "type": ztype}
+        (online if zone_id in running_ids else offline).append(entry)
     return {"online": online, "offline": offline}
