@@ -23,6 +23,10 @@ router = APIRouter()
 
 @router.get("/item-builder")
 async def item_builder_page(request: Request):
+    from app.auth.sessions import read_session as _rs
+    from fastapi.responses import RedirectResponse
+    if not (_rs(request) or {}).get("id"):
+        return RedirectResponse("/", status_code=302)
     items_data = _load_items()
     ctx = get_template_data(settings.server_ver)
     ctx["items_opts"] = build_item_opts(items_data, settings.server_ver)

@@ -47,6 +47,9 @@
     XMLHttpRequest.prototype.send=function(){
       if(this._xm && MUTATING[this._xm.toUpperCase()])
         this.setRequestHeader('X-CSRF-Token',getCsrf());
+      this.addEventListener('load',function(){
+        if(this.status===401) window.location.href='/';
+      });
       return _send.apply(this,arguments);
     };
   })();

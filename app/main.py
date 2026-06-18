@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +8,13 @@ from fastapi.templating import Jinja2Templates
 from app.database import engine, Base
 from app.routers import auth, accounts, characters, game, maps, gshop, items, server, activity_log
 from app.auth.sessions import read_session
+
+
+def _require_session(request: Request):
+    session = read_session(request)
+    if not session or not session.get("id"):
+        return None, RedirectResponse("/", status_code=302)
+    return session, None
 
 
 @asynccontextmanager
@@ -69,17 +77,25 @@ async def root(request: Request):
 
 @app.get("/account")
 async def account_page(request: Request):
-    session = read_session(request) or {}
+    session, redir = _require_session(request)
+    if redir:
+        return redir
     return templates.TemplateResponse(request, "account/index.html", {"user_id": session.get("id", 0), "is_admin": session.get("is_admin", False)})
 
 
 @app.get("/gshop")
 async def gshop_page(request: Request):
+    _, redir = _require_session(request)
+    if redir:
+        return redir
     return templates.TemplateResponse(request, "gshop/index.html")
 
 
 @app.get("/server")
 async def server_page(request: Request):
+    _, redir = _require_session(request)
+    if redir:
+        return redir
     return templates.TemplateResponse(request, "server/index.html")
 
 
