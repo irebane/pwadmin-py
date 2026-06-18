@@ -386,6 +386,99 @@
         </div>
       </div>
 
+      <!-- ITEM DATABASE ───────────────────────────────────────────── -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden" x-data="itemDb()">
+        <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+          <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Item Database</h2>
+          <span class="text-xs text-slate-600" x-text="current ? current.item_count + ' items' : ''"></span>
+        </div>
+        <div class="p-4 space-y-4">
+
+          <!-- Status bar -->
+          <div x-show="msg" x-cloak
+            :class="msgOk ? 'text-emerald-400 bg-emerald-950/40 border-emerald-900/50' : 'text-red-400 bg-red-950/40 border-red-900/50'"
+            class="text-xs border rounded px-3 py-2 font-mono" x-text="msg"></div>
+
+          <!-- Current file info -->
+          <div x-show="current" class="bg-slate-800/50 rounded-lg px-4 py-3 flex items-center justify-between">
+            <div>
+              <div class="text-xs text-slate-400 font-semibold">pw_items.json</div>
+              <div class="text-xs text-slate-600 mt-0.5" x-text="current ? current.mtime + '  ·  ' + current.size_kb + ' KB  ·  ' + current.item_count + ' items' : ''"></div>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-900 font-semibold">Active</span>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="flex gap-2 flex-wrap">
+            <button @click="regenerate()" :disabled="busy"
+              class="text-xs px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 rounded text-white font-semibold flex items-center gap-1.5">
+              <span x-show="!busy">↻ Regenerate from elements.data</span>
+              <span x-show="busy" x-cloak>Scanning… (up to 90s)</span>
+            </button>
+            <button @click="showUpload = !showUpload"
+              class="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 font-semibold">
+              ↑ Upload elements.data
+            </button>
+            <span x-show="uploadedEl" x-cloak
+              class="text-xs px-2 py-1.5 rounded bg-emerald-950/50 text-emerald-500 border border-emerald-900/50">
+              ✓ elements.data uploaded
+            </span>
+          </div>
+
+          <!-- Upload panel -->
+          <div x-show="showUpload" x-cloak
+            class="bg-slate-800/60 border border-slate-700 rounded-lg p-4 space-y-3">
+            <p class="text-xs text-slate-400">
+              Upload your <code class="text-slate-300 font-mono">elements.data</code> from
+              <code class="text-slate-300 font-mono">$SERVER/home/gamed/config/elements.data</code>.
+              It will be stored on the server and used when you click Regenerate.
+            </p>
+            <div class="flex gap-2 items-center">
+              <input type="file" accept=".data" @change="uploadFile = $event.target.files[0]"
+                class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:text-xs file:bg-slate-700 file:text-slate-300 file:border-0 hover:file:bg-slate-600 cursor-pointer">
+              <button @click="doUpload()" :disabled="!uploadFile || busy"
+                class="text-xs px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 rounded text-white font-semibold shrink-0">
+                Upload
+              </button>
+            </div>
+            <p class="text-xs text-slate-600">
+              File is ~27 MB for a standard PW 1.4.2 server. Upload may take a moment depending on connection speed.
+            </p>
+          </div>
+
+          <!-- Backups list -->
+          <div x-show="backups.length > 0">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Backups</span>
+              <button @click="backupsOpen = !backupsOpen"
+                class="text-xs text-slate-600 hover:text-slate-300"
+                x-text="backupsOpen ? '▲ hide' : '▼ show (' + backups.length + ')'"></button>
+            </div>
+            <div x-show="backupsOpen" x-cloak class="space-y-1">
+              <template x-for="bak in backups" :key="bak.name">
+                <div class="flex items-center justify-between bg-slate-800/40 rounded px-3 py-2 text-xs group">
+                  <div>
+                    <span class="text-slate-400 font-mono" x-text="bak.name.replace('pw_items_','').replace('.json.bak','')"></span>
+                    <span class="text-slate-600 ml-2" x-text="bak.item_count > 0 ? bak.item_count + ' items' : bak.size_kb + ' KB'"></span>
+                  </div>
+                  <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button @click="activate(bak.name)"
+                      class="px-2 py-0.5 bg-blue-800 hover:bg-blue-700 rounded text-blue-300 hover:text-white">
+                      Activate
+                    </button>
+                    <button @click="deleteBackup(bak.name)"
+                      class="px-2 py-0.5 bg-red-950/60 hover:bg-red-800/60 rounded text-red-500 hover:text-red-300">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div><!-- end right col -->
   </div><!-- end grid -->
 
@@ -631,6 +724,7 @@ function serverPage() {
     },
 
     async serverAction(action) {
+
       if (!confirm('Server ' + action + '?')) return;
       this.controlling   = true;
       this.controlAction  = action;
@@ -670,6 +764,103 @@ function serverPage() {
         }
       } catch(e) { alert('Network error'); }
       this.controlling = false;
+    },
+  };
+}
+
+function itemDb() {
+  return {
+    current: null, backups: [], uploadedEl: false,
+    busy: false, msg: '', msgOk: true,
+    showUpload: false, backupsOpen: false,
+    uploadFile: null,
+
+    async init() { await this.load(); },
+
+    async load() {
+      try {
+        const r = await fetch('/api/server/items-files');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.current     = d.current;
+        this.backups     = d.backups || [];
+        this.uploadedEl  = d.uploaded_elements;
+        if (this.backups.length) this.backupsOpen = true;
+      } catch(e) {}
+    },
+
+    flash(text, ok) {
+      this.msg = text; this.msgOk = ok;
+      setTimeout(() => this.msg = '', ok ? 4000 : 8000);
+    },
+
+    async regenerate() {
+      if (!confirm('Regenerate pw_items.json from elements.data? Current file will be backed up.')) return;
+      this.busy = true; this.msg = '';
+      try {
+        const r = await fetch('/api/server/regenerate-items', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) {
+          this.flash('Done — ' + d.total_items + ' items written.', true);
+          await this.load();
+        } else {
+          this.flash(d.detail || 'Regeneration failed', false);
+        }
+      } catch(e) { this.flash('Network error', false); }
+      this.busy = false;
+    },
+
+    async doUpload() {
+      if (!this.uploadFile) return;
+      this.busy = true; this.msg = '';
+      const fd = new FormData();
+      fd.append('file', this.uploadFile);
+      try {
+        const r = await fetch('/api/server/upload-elements', { method: 'POST', body: fd });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) {
+          this.flash('Uploaded ' + d.size_mb + ' MB — ready to regenerate.', true);
+          this.uploadedEl = true;
+          this.showUpload = false;
+        } else {
+          this.flash(d.detail || 'Upload failed', false);
+        }
+      } catch(e) { this.flash('Network error', false); }
+      this.busy = false;
+    },
+
+    async activate(filename) {
+      if (!confirm('Activate ' + filename + '? Current file will be backed up.')) return;
+      this.busy = true;
+      try {
+        const r = await fetch('/api/server/items-activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) {
+          this.flash('Activated — ' + d.item_count + ' items now active.', true);
+          await this.load();
+        } else {
+          this.flash(d.detail || 'Activate failed', false);
+        }
+      } catch(e) { this.flash('Network error', false); }
+      this.busy = false;
+    },
+
+    async deleteBackup(filename) {
+      if (!confirm('Delete ' + filename + '?')) return;
+      try {
+        const r = await fetch('/api/server/items-backup/' + filename, { method: 'DELETE' });
+        if (r.ok) {
+          this.backups = this.backups.filter(b => b.name !== filename);
+          this.flash('Deleted.', true);
+        } else {
+          const d = await r.json().catch(() => ({}));
+          this.flash(d.detail || 'Delete failed', false);
+        }
+      } catch(e) { this.flash('Network error', false); }
     },
   };
 }
