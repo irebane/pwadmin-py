@@ -15,9 +15,10 @@
 
 {% block content %}
 <div class="max-w-screen-2xl mx-auto px-4 py-5">
-  <div class="grid xl:grid-cols-[220px_220px_1fr] gap-5">
+  <div class="grid gap-5 {% if is_admin %}xl:grid-cols-[220px_220px_1fr]{% endif %}">
 
   <!-- ADMIN TOOLS -->
+  {% if is_admin %}
   <div id="AdminDiv" class="space-y-4">
 
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -130,8 +131,10 @@
       </div>
     </div>
   </div><!-- /AdminDiv -->
+  {% endif %}
 
   <!-- USER LIST -->
+  {% if is_admin %}
   <div id="UsersDiv" class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col" style="max-height:calc(100vh - 90px);">
     <div class="p-4 border-b border-slate-800 shrink-0">
       <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">User List</h2>
@@ -146,7 +149,8 @@
     <div class="flex-1 overflow-y-auto p-2">
       <table id="UserTable" class="w-full text-xs"></table>
     </div>
-  </div>
+  </div><!-- /UsersDiv -->
+  {% endif %}
 
   <!-- ACCOUNT INFO / EDIT -->
   <div>
@@ -351,6 +355,16 @@
 <div id="WebshopLogDiv" style="display:none;"></div>
 <input type="hidden" id="ExchGAmount" value="1">
 <span id="ExchPCost" style="display:none;"></span>
+{% if not is_admin %}
+<input type="hidden" id="LoadUserId" value="{{ user_id }}">
+<input type="hidden" id="AddGoldAmount" value="0">
+<input type="hidden" id="AddPointAmount" value="0">
+<input type="hidden" id="OldDate" value="365">
+<input type="hidden" id="OldDate1" value="1">
+<input type="hidden" id="rewAmount" value="0">
+<div id="AdminDiv" style="display:none;"></div>
+<div id="UsersDiv" style="display:none;"></div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -366,7 +380,7 @@ var SrvrTmZone = 0;
 });
 
 SendDataWithAjax(1, [{{ user_id }}]);
-UserSearch();
+{% if is_admin %}UserSearch();{% endif %}
 StartGlobalTimer();
 </script>
 {% endblock %}
