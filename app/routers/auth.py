@@ -112,9 +112,10 @@ async def register(request: Request, body: RegisterRequest, db: AsyncSession = D
         ID=new_id, name=username, passwd=hashed,
         email=body.email.lower(),
         idnumber=client_ip,
+        truename="", Prompt="", answer="",
+        creatime=datetime.utcnow(),
         WebPoint=settings.start_gold,
         VotePoint=settings.start_point,
-        Prompt="", answer="",
     )
     db.add(user)
     await db.commit()
