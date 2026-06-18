@@ -1,0 +1,20 @@
+[Unit]
+Description=PW Admin Panel (FastAPI)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/home/agilato/pwadmin-py
+ExecStart=/home/agilato/pwadmin-py/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8420
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pwadmin
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
