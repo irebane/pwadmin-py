@@ -55,8 +55,11 @@ IBMENU_SC = {
     ],
     6: ["Normal Mats#0", "Jade#0", "Herbs#0"],
     7: [
-        "Tops#0", "Pants#0", "Shoes#0", "Gowns#0", "Gloves#0", "Shorts#0",
-        "Skirts#0", "Heels#0", "Hats#0", "Capes#0", "Hair#39", "Weapon#49",
+        "Top [Male]#0", "Top [Female]#0",
+        "Pants [Male]#0", "Skirt [Female]#0",
+        "Glove [Male]#0", "Sleeves [Female]#0",
+        "Boots [Male]#0", "Shoes [Female]#0",
+        "Hair Style [Male]#0", "Hair Style [Female]#0",
     ],
     8: [
         "Warrior#0", "Magician#0", "Werebeast#0", "Werefox#0",

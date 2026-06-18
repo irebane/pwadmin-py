@@ -73,55 +73,154 @@ def detect_config(elements_path: str) -> str | None:
         return below[-1]["name"]  # list is sorted ascending, so last = closest
     return configs[0]["name"]
 
-# Maps element table name → (pw_type, pw_subtype_field_or_fixed)
-# pw_subtype is either an int (fixed) or a field name (read from record)
-# pw_type: 1=Weapon, 2=Armor, 3=Jewelry, 4=Flyer/Pet, 5=Elf, 6=Fashion, 7=Misc
+# ibuild.js type letter → mcat → SItmC{mcat}S{sub} → pw_items.json type key
+#   W=1(Weapon)  A=2(Armor)  J=3(Jewelry)  O=4(Other Octet)
+#   U=5(Utility) M=6(Mats&Herbs)  F=7(Fashion)  C=8(Cards)
+#
+# pw_items.json sub numbers must match 1-based positions in IBMENU_SC[type].
+# Sub-type IDs from elements.data are large arbitrary ints — remap them below.
+
 _TABLE_MAP = {
-    "004 - WEAPON_ESSENCE":     (1, "id_sub_type"),
-    "007 - ARMOR_ESSENCE":      (2, "id_sub_type"),
-    "010 - DECORATION_ESSENCE": (3, "id_sub_type"),
-    "013 - MEDICINE_ESSENCE":   (7, 1),
-    "016 - MATERIAL_ESSENCE":   (7, 2),
-    "018 - DAMAGERUNE_ESSENCE": (5, 1),
-    "020 - ARMORRUNE_ESSENCE":  (5, 2),
-    "022 - SKILLTOME_ESSENCE":  (7, 3),
-    "023 - FLYSWORD_ESSENCE":   (4, 1),
-    "024 - WINGMANWING_ESSENCE":(4, 2),
-    "025 - TOWNSCROLL_ESSENCE": (7, 4),
-    "026 - UNIONSCROLL_ESSENCE":(7, 4),
-    "027 - REVIVESCROLL_ESSENCE":(7,4),
-    "028 - ELEMENT_ESSENCE":    (7, 4),
-    "029 - TASKMATTER_ESSENCE": (7, 5),
-    "030 - TOSSMATTER_ESSENCE": (7, 5),
-    "032 - PROJECTILE_ESSENCE": (7, 5),
-    "034 - QUIVER_ESSENCE":     (7, 5),
-    "036 - STONE_ESSENCE":      (7, 6),
-    "084 - FASHION_ESSENCE":    (6, "id_sub_type"),
-    "087 - FACETICKET_ESSENCE": (7, 7),   # makeover scrolls → misc
-    "090 - FACEPILL_ESSENCE":   (7, 7),
-    "095 - PET_ESSENCE":        (4, 3),
-    "096 - PET_EGG_ESSENCE":    (4, 4),
-    "097 - PET_FOOD_ESSENCE":   (7, 7),
-    "098 - PET_FACETICKET_ESSENCE":(7, 7),
-    "099 - FIREWORKS_ESSENCE":  (7, 7),
-    "100 - WAR_TANKCALLIN_ESSENCE":(4, 5),
-    "107 - SKILLMATTER_ESSENCE":(7, 3),
-    "108 - REFINE_TICKET_ESSENCE":(7, 8),
-    "109 - DESTROYING_ESSENCE": (7, 8),
-    "113 - BIBLE_ESSENCE":      (7, 8),
-    "114 - SPEAKER_ESSENCE":    (7, 8),
-    "115 - AUTOHP_ESSENCE":     (7, 1),
-    "116 - AUTOMP_ESSENCE":     (7, 1),
-    "117 - DOUBLE_EXP_ESSENCE": (7, 8),
-    "118 - TRANSMITSCROLL_ESSENCE":(7, 4),
-    "119 - DYE_TICKET_ESSENCE": (6, 9),
-    "120 - GOBLIN_ESSENCE":     (4, 5),
-    "122 - GOBLIN_EQUIP_ESSENCE":(4, 5),
-    "123 - GOBLIN_EXPPILL_ESSENCE":(7, 8),
-    "124 - SELL_CERTIFICATE_ESSENCE":(7, 8),
-    "125 - TARGET_ITEM_ESSENCE":(7, 8),
-    "126 - LOOK_INFO_ESSENCE":  (7, 8),
+    # type 1 – Weapon  (IBMENU_SC[1]: Polehammer…Schythe)
+    "004 - WEAPON_ESSENCE":      (1, "id_sub_type"),
+
+    # type 2 – Armor   (IBMENU_SC[2]: HeavyPlate…Manteau)
+    "007 - ARMOR_ESSENCE":       (2, "id_sub_type"),
+
+    # type 3 – Jewelry (IBMENU_SC[3]: PhysNeck…MagicRing)
+    "010 - DECORATION_ESSENCE":  (3, "id_sub_type"),
+
+    # type 4 – Other Octet (IBMENU_SC[4]: Flyer, PetEgg, BlessBox, Elf, Hiero…)
+    "023 - FLYSWORD_ESSENCE":    (4, 1),   # Flyer
+    "024 - WINGMANWING_ESSENCE": (4, 1),   # Flyer (elf wings)
+    "095 - PET_ESSENCE":         (4, 2),   # Pet Egg
+    "096 - PET_EGG_ESSENCE":     (4, 2),   # Pet Egg
+    "120 - GOBLIN_ESSENCE":      (4, 2),   # Pet Egg
+    "122 - GOBLIN_EQUIP_ESSENCE":(4, 2),   # Pet Egg
+    "100 - WAR_TANKCALLIN_ESSENCE":(4, 1), # Flyer (tank mount)
+
+    # type 5 – Utility (IBMENU_SC[5]: Tome, Boost, Util, Chat, Pages, Dye…)
+    "022 - SKILLTOME_ESSENCE":   (5, 1),   # Tome
+    "107 - SKILLMATTER_ESSENCE": (5, 1),   # Tome
+    "013 - MEDICINE_ESSENCE":    (5, 2),   # Boost (HP/MP/buff potions)
+    "115 - AUTOHP_ESSENCE":      (5, 2),   # Boost
+    "116 - AUTOMP_ESSENCE":      (5, 2),   # Boost
+    "117 - DOUBLE_EXP_ESSENCE":  (5, 2),   # Boost
+    "123 - GOBLIN_EXPPILL_ESSENCE":(5, 2), # Boost
+    "090 - FACEPILL_ESSENCE":    (5, 2),   # Boost
+    "025 - TOWNSCROLL_ESSENCE":  (5, 3),   # Util
+    "026 - UNIONSCROLL_ESSENCE": (5, 3),   # Util
+    "027 - REVIVESCROLL_ESSENCE":(5, 3),   # Util
+    "028 - ELEMENT_ESSENCE":     (5, 3),   # Util
+    "118 - TRANSMITSCROLL_ESSENCE":(5, 3), # Util
+    "087 - FACETICKET_ESSENCE":  (5, 3),   # Util (makeover scrolls)
+    "108 - REFINE_TICKET_ESSENCE":(5, 3),  # Util
+    "109 - DESTROYING_ESSENCE":  (5, 3),   # Util
+    "113 - BIBLE_ESSENCE":       (5, 3),   # Util
+    "124 - SELL_CERTIFICATE_ESSENCE":(5, 3), # Util
+    "125 - TARGET_ITEM_ESSENCE": (5, 3),   # Util
+    "126 - LOOK_INFO_ESSENCE":   (5, 3),   # Util
+    "114 - SPEAKER_ESSENCE":     (5, 4),   # Chat
+    "099 - FIREWORKS_ESSENCE":   (5, 7),   # Firework
+    "119 - DYE_TICKET_ESSENCE":  (5, 6),   # Dye
+    "097 - PET_FOOD_ESSENCE":    (5, 10),  # Pet Scroll
+    "098 - PET_FACETICKET_ESSENCE":(5, 3), # Util
+    "018 - DAMAGERUNE_ESSENCE":  (5, 3),   # Util (elf runes)
+    "020 - ARMORRUNE_ESSENCE":   (5, 3),   # Util (elf runes)
+
+    # type 6 – Mats & Herbs (IBMENU_SC[6]: NormalMats, Jade, Herbs)
+    "016 - MATERIAL_ESSENCE":    (6, 1),   # Normal Mats
+    "029 - TASKMATTER_ESSENCE":  (6, 1),   # Normal Mats
+    "030 - TOSSMATTER_ESSENCE":  (6, 1),   # Normal Mats
+    "032 - PROJECTILE_ESSENCE":  (6, 1),   # Normal Mats
+    "034 - QUIVER_ESSENCE":      (6, 1),   # Normal Mats
+    "036 - STONE_ESSENCE":       (6, 2),   # Jade (craft stones)
+
+    # type 7 – Fashion  (IBMENU_SC[7]: Top[M], Top[F], Pants[M], Skirt[F]…)
+    # Sub is derived from (id_sub_type, gender) — sentinel triggers special handling
+    "084 - FASHION_ESSENCE":     (7, "FASHION_GENDER"),
 }
+
+# Sub-type ID from elements.data → 1-based IBMENU_SC position
+# Read from actual WEAPON/ARMOR/DECORATION/FASHION_SUB_TYPE tables in elements.data v27.
+_WEAPON_SUB_REMAP: dict[int, int] = {
+    10: 1,   # Polehammer
+    98: 2,   # Poleaxe
+    99: 3,   # Dual Axes
+    118: 4,  # Dual Hammers
+    56: 5,   # Pike (Spear)
+    66: 6,   # Poleblade (Polearm)
+    76: 7,   # 棍杖 (Staff)
+    86: 8,   # Club (Mace)
+    2: 9,    # Blade
+    18: 10,  # Sword
+    46: 11,  # Dual Blades
+    35: 12,  # Dual Swords
+    183: 13, # Fist
+    184: 14, # Claw
+    96: 15,  # Bow
+    209: 16, # Crossbow
+    210: 17, # Slingshot
+    336: 18, # Magic Sword
+    338: 19, # Wand
+    339: 20, # Glaive (Magic Quoit)
+    340: 21, # Pataka (Magic Staff)
+    23755: 22, 25719: 22,  # Dagger
+    23756: 23, 25720: 23,  # Artifact (Sphere)
+}
+
+_ARMOR_SUB_REMAP: dict[int, int] = {
+    127: 1,  # Heavy Plate
+    140: 2,  # Light Armor
+    153: 3,  # Arcane Robe
+    163: 4,  # Heavy Leggings
+    188: 5,  # Light Leggings
+    202: 6,  # Arcane Leggings
+    217: 7,  # Heavy Footwear
+    218: 8,  # Light Footwear
+    219: 9,  # Arcane Footwear
+    347: 10, # Heavy Wristguards
+    2875: 11, # Light Wristguards
+    356: 12, # Arcane Wristguards
+    318: 13, # Helmet
+    317: 14, # Arcane Headgear (Magic Headgear)
+    370: 15, # Robe/Manteau/Cloak
+}
+
+_DECORATION_SUB_REMAP: dict[int, int] = {
+    172: 1,  # Elemental Necklace → Physical Necklace
+    241: 2,  # Ethereal Necklace  → Dodge Necklace
+    243: 3,  # Protection Necklace → Magical Necklace
+    235: 4,  # Elemental Belt → Physical Waist
+    244: 5,  # Ethereal Belt  → Dodge Waist
+    245: 6,  # Protection Belt → Magical Waist
+    248: 7,  # Might Ring → Physical Ring
+    250: 8,  # Magic Ring → Magical Ring
+}
+
+# Fashion: keyed by (id_sub_type, gender) → 1-based IBMENU_SC[7] position
+# gender=0=Male, gender=1=Female (from actual elements.data dump)
+_FASHION_SUB_REMAP: dict[tuple[int, int], int] = {
+    (3937, 0): 1,   # Body, Male   → Top [Male]
+    (3937, 1): 2,   # Body, Female → Top [Female]
+    (4270, 0): 3,   # Legwears, Male   → Pants [Male]
+    (4270, 1): 4,   # Legwears, Female → Skirt [Female]
+    (4188, 0): 5,   # Handwears, Male   → Glove [Male]
+    (4188, 1): 6,   # Handwears, Female → Sleeves [Female]
+    (3954, 0): 7,   # Footwears, Male   → Boots [Male]
+    (3954, 1): 8,   # Footwears, Female → Shoes [Female]
+    (26173, 0): 9,  # Headdress, Male   → Hair Style [Male]
+    (26173, 1): 10, # Headdress, Female → Hair Style [Female]
+}
+
+_SUB_REMAPS: dict[int, dict[int, int]] = {
+    1: _WEAPON_SUB_REMAP,
+    2: _ARMOR_SUB_REMAP,
+    3: _DECORATION_SUB_REMAP,
+}
+
+# Item types that use grade field (cats 1/2/3 in getPItemData do selectedIndex = grade-1)
+_GEAR_TYPES = {1, 2, 3}
 
 # ── PHP converter ──────────────────────────────────────────────────────────────
 
@@ -355,9 +454,17 @@ def from_elements(elements_path: str, _existing: dict | None = None,
                 if not item_id or not item_name:
                     continue
 
-                # Determine subtype
-                if isinstance(sub_spec, str):
-                    pw_sub = record.get(sub_spec, 0) or 0
+                # Determine sub-type position (1-based IBMENU_SC position)
+                if sub_spec == "FASHION_GENDER":
+                    raw_sub = record.get("id_sub_type", 0) or 0
+                    raw_gender = record.get("gender", 0) or 0
+                    pw_sub = _FASHION_SUB_REMAP.get((raw_sub, raw_gender), 0)
+                    if pw_sub == 0:
+                        continue  # unknown fashion sub — skip
+                elif isinstance(sub_spec, str):
+                    raw_sub = record.get(sub_spec, 0) or 0
+                    remap = _SUB_REMAPS.get(pw_type)
+                    pw_sub = remap.get(raw_sub, 1) if remap else (raw_sub or 1)
                 else:
                     pw_sub = sub_spec
 
@@ -368,42 +475,21 @@ def from_elements(elements_path: str, _existing: dict | None = None,
           f"across {len(items_by_cat)} categories.", file=sys.stderr)
 
     # ── Build output ───────────────────────────────────────────────────────────
-    # Merge weapon/armor sub-type name lookups into the category keys where
-    # id_sub_type was used — remap numeric sub IDs to 1-based sequential ints
-    # per type so pw_items.json sub-keys stay small integers.
-    def _sequential_sub(type_id: int, raw_sub: int, sub_name_map: dict) -> int:
-        """Remap raw sub_type ID to a stable 1-based index within this type."""
-        if type_id not in _sub_remap:
-            _sub_remap[type_id] = {}
-        remap = _sub_remap[type_id]
-        if raw_sub not in remap:
-            remap[raw_sub] = len(remap) + 1
-        return remap[raw_sub]
-
-    _sub_remap: dict[int, dict[int, int]] = {}
-
     result: dict[str, dict[str, list]] = {}
-
-    # Types where sub comes from id_sub_type (need remapping)
-    dynamic_sub_types = {1, 2, 3, 6}
-
     seen_ids: set[int] = set()
 
     for (pw_type, pw_sub), entries in sorted(items_by_cat.items()):
-        if pw_type in dynamic_sub_types:
-            mapped_sub = _sequential_sub(pw_type, pw_sub, {})
-        else:
-            mapped_sub = pw_sub
-
         t_str = str(pw_type)
-        s_str = str(mapped_sub)
+        s_str = str(pw_sub)
         bucket = result.setdefault(t_str, {}).setdefault(s_str, [])
+        # Grade: gear types (1/2/3) need grade≥1 so ibuild's selectedIndex = grade-1 ≥ 0
+        grade = "1" if pw_type in _GEAR_TYPES else "0"
 
         for item_id, item_name in entries:
             if item_id in seen_ids:
                 continue
             seen_ids.add(item_id)
-            bucket.append(f"{item_name}#{item_id}#0#0#0")
+            bucket.append(f"{item_name}#{item_id}#{grade}#0#0")
 
     total = sum(len(v) for subs in result.values() for v in subs.values())
     print(f"Built {total:,} unique items across {len(result)} types.", file=sys.stderr)
