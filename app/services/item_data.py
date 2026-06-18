@@ -421,7 +421,8 @@ def build_item_opts(items_data: dict, server_ver: int = 75) -> dict:
         result[t] = {}
         for sub_str, entries in subtypes.items():
             s = int(sub_str)
-            entry_list = sorted(entries.values(), key=lambda x: x.split("#")[0])
+            _vals = entries.values() if isinstance(entries, dict) else entries
+            entry_list = sorted(_vals, key=lambda x: x.split("#")[0])
             opts = []
             first = True
             for entry in entry_list:

@@ -35,7 +35,8 @@ async def item_builder_page(request: Request):
     # Elf gear items grouped by category (grade field = slot 1-4)
     elf_raw = items_data.get("5", {}).get("14", {})
     elf_slots: dict[int, list[str]] = {1: [], 2: [], 3: [], 4: []}
-    for entry in sorted(elf_raw.values(), key=lambda x: x.split("#")[0]):
+    _elf_entries = elf_raw.values() if isinstance(elf_raw, dict) else elf_raw
+    for entry in sorted(_elf_entries, key=lambda x: x.split("#")[0]):
         parts = entry.split("#")
         cat = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
         if cat in elf_slots:
