@@ -482,14 +482,18 @@ def from_elements(elements_path: str, _existing: dict | None = None,
         t_str = str(pw_type)
         s_str = str(pw_sub)
         bucket = result.setdefault(t_str, {}).setdefault(s_str, [])
-        # Grade: gear types (1/2/3) need grade≥1 so ibuild's selectedIndex = grade-1 ≥ 0
+        # Grade: gear types (1/2/3) need grade≥1 so getPItemData's selectedIndex = grade-1 ≥ 0
         grade = "1" if pw_type in _GEAR_TYPES else "0"
 
         for item_id, item_name in entries:
             if item_id in seen_ids:
                 continue
             seen_ids.add(item_id)
-            bucket.append(f"{item_name}#{item_id}#{grade}#0#0")
+            # Format: name#id#grade#color#addon#extra
+            # addon "1 0 0 0" = amount/stack=1, proc=0, octetType=0, octetData=0
+            # extra "-" = non-numeric so isNumber() returns false for Tome (sct=1)
+            #   desc branch, preventing TomeStat[NaN] crash in getPItemData
+            bucket.append(f"{item_name}#{item_id}#{grade}#0#1 0 0 0#-")
 
     total = sum(len(v) for subs in result.values() for v in subs.values())
     print(f"Built {total:,} unique items across {len(result)} types.", file=sys.stderr)
