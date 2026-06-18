@@ -7,3 +7,4 @@ dist/
 *.egg-info/
 MISMATCH.md
 my_deployment.md
+data/backups/

@@ -8,7 +8,7 @@ Usage:
     python tools/generate_items.py --source elements  # uses server path from .env
 
 The output is written to data/pw_items.json. The previous file is backed up
-to data/pw_items.json.bak before overwriting.
+to data/backups/pw_items_YYYYMMDD_HHMMSS.json.bak before overwriting.
 """
 
 import argparse
@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 OUTPUT = Path("data/pw_items.json")
-BACKUP = Path("data/pw_items.json.bak")
+BACKUP_DIR = Path("data/backups")
 
 # Item type/subtype mapping: (type_id, subtype_id) → (type_name, sub_name)
 # Mirrors the item builder category structure.
@@ -221,8 +221,12 @@ def main() -> None:
 
     # Backup
     if not args.no_backup and out_path.exists():
-        shutil.copy2(out_path, BACKUP)
-        print(f"Backup saved to {BACKUP}", file=sys.stderr)
+        from datetime import datetime
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        bak = BACKUP_DIR / f"pw_items_{ts}.json.bak"
+        shutil.copy2(out_path, bak)
+        print(f"Backup saved to {bak}", file=sys.stderr)
 
     # Generate
     if args.source == "php":

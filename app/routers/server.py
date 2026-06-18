@@ -131,7 +131,7 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
 
 
 _ITEMS_JSON = Path("data/pw_items.json")
-_ITEMS_BAK  = Path("data/pw_items.json.bak")
+_BACKUP_DIR = Path("data/backups")
 _TOOL       = Path(__file__).parent.parent.parent / "tools" / "generate_items.py"
 
 
@@ -144,9 +144,12 @@ async def regenerate_items(user: dict = Depends(require_admin)):
     if not _TOOL.exists():
         raise HTTPException(500, detail="generate_items.py tool not found")
 
-    # Backup existing
+    # Backup existing with timestamp
     if _ITEMS_JSON.exists():
-        shutil.copy2(_ITEMS_JSON, _ITEMS_BAK)
+        from datetime import datetime
+        _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        shutil.copy2(_ITEMS_JSON, _BACKUP_DIR / f"pw_items_{ts}.json.bak")
 
     loop = asyncio.get_event_loop()
     try:
