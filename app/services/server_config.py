@@ -49,10 +49,10 @@ def update_conf_key(content: str, key: str, value: str) -> str:
 _CM_VAL = {1: 1, 2: 2, 3: 16, 4: 8, 5: 128, 6: 64, 7: 4, 8: 32}
 
 
-def _read_threadpool_workers(path: Path) -> int | None:
+def _read_threadpool_workers(path: Path, encoding: str = "utf-8") -> int | None:
     try:
         in_tp = False
-        for ln in path.read_text().splitlines():
+        for ln in path.read_text(encoding=encoding).splitlines():
             ln = ln.strip()
             if ln.lower() == "[threadpool]":
                 in_tp = True
@@ -118,7 +118,7 @@ async def read_game_config() -> dict:
     result["glinkd_count"] = glinkd_count
     init_log.append(f"gmserver.conf: {glinkd_count} glinkd instance(s)")
 
-    db_w = _read_threadpool_workers(Path(settings.server_path) / "gamedbd" / "gamesys.conf")
+    db_w = _read_threadpool_workers(Path(settings.server_path) / "gamedbd" / "gamesys.conf", encoding="latin-1")
     result["db_workers"] = db_w if db_w is not None else 2
     if db_w is not None:
         init_log.append(f"gamedbd: {db_w} worker(s)")
@@ -190,6 +190,12 @@ async def save_game_config(data: dict) -> str:
         gamesys2 = _server_file_path(2, "gamesys.conf")
         content = await read_conf(gamesys2)
         content = update_conf_key(content, "case_insensitive", str(data.get("name_insens", 0)))
+        name_workers = max(1, int(data.get("name_workers", 1)))
+        content = re.sub(
+            r'^(threads\s*=\s*.*)$',
+            lambda m: re.sub(r'\(1,\d+\)', f'(1,{name_workers})', m.group(1)),
+            content, flags=re.MULTILINE,
+        )
         await _try_write("uniquenamed/gamesys.conf", gamesys2, content)
     except Exception as e:
         errors.append(f"uniquenamed/gamesys.conf: {e}")
@@ -207,7 +213,11 @@ async def save_game_config(data: dict) -> str:
         gamedbd_conf = _server_file_path(4, "gamesys.conf")
         db_workers = max(1, int(data.get("db_workers", 1)))
         content = gamedbd_conf.read_text(encoding="latin-1")
-        content = re.sub(r'(\(1,)\d+(\))', rf'\g<1>{db_workers}\2', content)
+        content = re.sub(
+            r'^(threads\s*=\s*.*)$',
+            lambda m: re.sub(r'\(1,\d+\)', f'(1,{db_workers})', m.group(1)),
+            content, flags=re.MULTILINE,
+        )
         await _try_write("gamedbd/gamesys.conf", gamedbd_conf, content, encoding="latin-1")
     except Exception as e:
         errors.append(f"gamedbd/gamesys.conf: {e}")
