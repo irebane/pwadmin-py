@@ -61,31 +61,26 @@ async def load_account_v2(db: AsyncSession, user_id: int) -> list:
         gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.creatime), "pending": 1}
         idx += 1
 
-    # characters — query gamedbd socket via point.aid (game account ID)
+    # characters — gamedbd uses users.ID directly as the game account ID
     classes = settings.pw_classes_dict
     chars = {}
-    aid_row = await db.execute(
-        text("SELECT aid FROM point WHERE uid=:uid LIMIT 1"), {"uid": user_id}
-    )
-    aid_rec = aid_row.fetchone()
-    if aid_rec:
-        import asyncio
-        from app.pw_socket import get_user_roles, get_role_base
-        loop = asyncio.get_event_loop()
-        role_list = await loop.run_in_executor(None, get_user_roles, int(aid_rec.aid))
-        for i, role in enumerate(role_list):
-            base = await loop.run_in_executor(None, get_role_base, role["role_id"], classes)
-            chars[i] = {
-                "roleid": role["role_id"],
-                "rolename": role["role_name"],
-                "roleclass": base["role_class"] if base else "",
-                "rolepath": base["role_path"] if base else "",
-                "rolelevel": base["role_level"] if base else 0,
-                "posX": base["pos_x"] if base else 0,
-                "posY": base["pos_y"] if base else 0,
-                "posZ": base["pos_z"] if base else 0,
-                "map": base["map"] if base else 0,
-            }
+    import asyncio
+    from app.pw_socket import get_user_roles, get_role_base
+    loop = asyncio.get_event_loop()
+    role_list = await loop.run_in_executor(None, get_user_roles, user_id)
+    for i, role in enumerate(role_list):
+        base = await loop.run_in_executor(None, get_role_base, role["role_id"], classes)
+        chars[i] = {
+            "roleid": role["role_id"],
+            "rolename": role["role_name"],
+            "roleclass": base["role_class"] if base else "",
+            "rolepath": base["role_path"] if base else "",
+            "rolelevel": base["role_level"] if base else 0,
+            "posX": base["pos_x"] if base else 0,
+            "posY": base["pos_y"] if base else 0,
+            "posZ": base["pos_z"] if base else 0,
+            "map": base["map"] if base else 0,
+        }
 
     if user.birthday:
         try:

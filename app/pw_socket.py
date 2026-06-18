@@ -84,12 +84,19 @@ def _send_recv(packet: bytes) -> bytes | None:
             s.settimeout(TIMEOUT)
             s.connect((GAMEDBD_HOST, GAMEDBD_PORT))
             s.sendall(packet)
-            buf = b""
+            buf = s.recv(131072)  # first chunk with full timeout
+            if not buf:
+                return None
+            # collect any remaining chunks; server doesn't close connection so use short timeout
+            s.settimeout(0.05)
             while True:
-                chunk = s.recv(65536)
-                if not chunk:
+                try:
+                    chunk = s.recv(131072)
+                    if not chunk:
+                        break
+                    buf += chunk
+                except socket.timeout:
                     break
-                buf += chunk
             return buf
     except Exception:
         return None
