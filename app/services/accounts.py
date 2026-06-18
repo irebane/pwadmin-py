@@ -210,12 +210,17 @@ async def account_tool_v2(db: AsyncSession, tool: int, params: dict, is_admin: b
     uid = int(params.get("id", 0))
     amount = int(params.get("amount", 0))
 
-    if tool == 2:  # add gold
+    if tool == 2:  # add gold — insert pending delivery into usecashnow (game server picks it up)
         if uid < 1 or amount < 1:
             return _tool_resp(error="Invalid parameters.")
         uname = await db.scalar(select(User.name).where(User.ID == uid)) or "unknown"
-        await db.execute(update(User).where(User.ID == uid).values(
-            WebPoint=func.coalesce(User.WebPoint, 0) + amount))
+        gold_cash = amount * 100  # PW stores gold as cents
+        now = datetime.utcnow()
+        await db.execute(text(
+            "INSERT INTO usecashnow (userid, zoneid, sn, aid, point, cash, status, creatime)"
+            " VALUES (:uid, 1, 0, 1, 0, :cash, 1, :now)"
+            " ON DUPLICATE KEY UPDATE cash = cash + :cash, status = 1, creatime = :now"
+        ), {"uid": uid, "cash": gold_cash, "now": now})
         await db.commit()
         return _tool_resp(success=f"Added {amount} gold to account: {uname} [{uid}]",
                           reloaduserdata="1")
