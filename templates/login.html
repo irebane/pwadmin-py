@@ -45,6 +45,7 @@
           <div class="mb-3">
             <label class="block text-xs text-slate-500 mb-1.5">Username</label>
             <input type="text" x-model="loginUser" maxlength="20" autocomplete="username" required
+              @keydown.enter="$nextTick(()=>$el.closest('form').querySelector('[autocomplete=current-password]').focus())"
               class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
               placeholder="Enter username">
           </div>
@@ -53,6 +54,7 @@
             <div class="relative">
               <input :type="showLoginPw ? 'text' : 'password'" x-model="loginPass"
                 maxlength="20" autocomplete="current-password" required
+                @keydown.enter.prevent="doLogin()"
                 class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                 placeholder="Enter password">
               <button type="button" @click="showLoginPw = !showLoginPw"

@@ -19,7 +19,7 @@ def _tool_resp(error="", success="", reloaduserdata="0", reloaduserlist="0"):
              "reloaduserdata": reloaduserdata, "reloaduserlist": reloaduserlist}]
 
 
-async def load_account_v2(db: AsyncSession, user_id: int) -> list:
+async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool = False) -> list:
     result = await db.execute(select(User).where(User.ID == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -97,7 +97,7 @@ async def load_account_v2(db: AsyncSession, user_id: int) -> list:
         "username": user.name,
         "password": user.passwd,
         "rank": 1 if is_gm else 0,
-        "srank": 1 if user.ID == settings.admin_id else 0,
+        "srank": 1 if viewer_is_admin else 0,
         "truename": user.truename or "",
         "email": user.email,
         "creatime": ct,
@@ -209,9 +209,11 @@ async def account_tool_v2(db: AsyncSession, tool: int, params: dict, is_admin: b
     if tool == 2:  # add gold
         if uid < 1 or amount < 1:
             return _tool_resp(error="Invalid parameters.")
-        await db.execute(update(User).where(User.ID == uid).values(WebPoint=User.WebPoint + amount))
+        uname = await db.scalar(select(User.name).where(User.ID == uid)) or "unknown"
+        await db.execute(update(User).where(User.ID == uid).values(
+            WebPoint=func.coalesce(User.WebPoint, 0) + amount))
         await db.commit()
-        return _tool_resp(success=f"Added {amount} gold to account {uid}.",
+        return _tool_resp(success=f"Added {amount} gold to account: {uname} [{uid}]",
                           reloaduserdata="1")
 
     elif tool == 3:  # add vote point
