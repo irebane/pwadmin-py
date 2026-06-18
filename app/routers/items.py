@@ -104,11 +104,12 @@ async def items_log(request: Request, user: dict = Depends(require_admin)):
     raw = await request.json()
     action, _ = _parse_action_body(raw)
 
+    # Response must be [{error:""}, [items]] — JS checks fdbck != "" loosely so plain [] breaks it
     if action == "loadtempitems":
         if not _PACKETS_FILE.exists():
-            return []
+            return [{"error": ""}, []]
         lines = [ln.strip() for ln in _PACKETS_FILE.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        return lines
+        return [{"error": ""}, lines]
 
     if action == "loadshopitems":
         from app.database import async_session
@@ -124,9 +125,9 @@ async def items_log(request: Request, user: dict = Depends(require_admin)):
                     line = (f"0#{r[0]}###{r[1]}##{r[0]}#{r[3]}#{r[4]}"
                             f"#{r[5]}#{r[6]}#{r[7]}#{r[8]}#{r[9]}#{r[2]}#####")
                     result.append(line)
-                return result
+                return [{"error": ""}, result]
         except Exception as e:
-            return {"error": str(e)}
+            return [{"error": str(e)}, []]
 
     raise HTTPException(400, detail="Invalid action")
 
