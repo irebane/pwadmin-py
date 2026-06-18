@@ -4,8 +4,44 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}pwAdmin{% endblock %}</title>
+  <link rel="icon" type="image/png" href="/static/images/pwicon3.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <script>
+  (function(){
+    function getCsrf(){
+      var c=document.cookie.split(';');
+      for(var i=0;i<c.length;i++){
+        var p=c[i].trim();
+        if(p.indexOf('csrf_token=')===0) return p.substring(11);
+      }
+      return '';
+    }
+    var MUTATING={'POST':1,'PUT':1,'DELETE':1,'PATCH':1};
+    var _fetch=window.fetch;
+    window.fetch=function(url,opts){
+      opts=opts||{};
+      if(opts.method && MUTATING[opts.method.toUpperCase()]){
+        var h=opts.headers||{};
+        if(h instanceof Headers){h.set('X-CSRF-Token',getCsrf());}
+        else{h['X-CSRF-Token']=getCsrf();}
+        opts.headers=h;
+      }
+      return _fetch(url,opts);
+    };
+    var _open=XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open=function(method){
+      this._xm=method;
+      return _open.apply(this,arguments);
+    };
+    var _send=XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send=function(){
+      if(this._xm && MUTATING[this._xm.toUpperCase()])
+        this.setRequestHeader('X-CSRF-Token',getCsrf());
+      return _send.apply(this,arguments);
+    };
+  })();
+  </script>
   {% block head %}{% endblock %}
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen antialiased">
