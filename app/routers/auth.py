@@ -6,7 +6,7 @@ from app.deps import get_db
 from app.auth.passwords import verify_password_compat, hash_password_compat
 from app.auth.sessions import create_session, clear_session
 from app.auth.csrf import generate_csrf_token
-from app.models.users import User, Point
+from app.models.users import User
 from app.models.audit import LoginAttempt
 from app.config import settings
 from pydantic import BaseModel
@@ -110,10 +110,9 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     user = User(
         ID=new_id, name=username, passwd=hashed,
         email=body.email.lower(),
-        webpoint=settings.start_point,
+        WebPoint=settings.start_gold,
+        VotePoint=settings.start_point,
     )
     db.add(user)
-    point = Point(uid=new_id, webpoint=settings.start_gold)
-    db.add(point)
     await db.commit()
     return {"success": True}

@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, update
-from app.models.users import User, Point, Auth
+from app.models.users import User, Auth
 from app.auth.passwords import hash_password_compat, verify_password_compat, validate_date
 from app.config import settings
 
@@ -31,17 +31,15 @@ async def load_account(db: AsyncSession, user_id: int) -> dict | None:
     user = result.scalar_one_or_none()
     if not user:
         return None
-    point_result = await db.execute(select(Point).where(Point.uid == user_id))
-    point = point_result.scalar_one_or_none()
     return {
         "id": user.ID,
         "name": user.name,
         "email": user.email,
         "truename": user.truename or "",
-        "sex": user.sex or 0,
-        "birthday": user.birthday or "",
-        "webpoint": point.webpoint if point else 0,
-        "loginpoint": point.loginpoint if point else 0,
+        "gender": user.gender or 0,
+        "birthday": str(user.birthday.date()) if user.birthday else "",
+        "webpoint": user.WebPoint or 0,
+        "votepoint": user.VotePoint or 0,
     }
 
 
@@ -75,8 +73,8 @@ async def save_account(
         user.email = data["email"].lower().strip()
     if data.get("truename") is not None:
         user.truename = data["truename"].strip()
-    if data.get("sex") is not None:
-        user.sex = int(data["sex"])
+    if data.get("gender") is not None:
+        user.gender = int(data["gender"])
     if data.get("birthday"):
         if validate_date(data["birthday"]):
             user.birthday = data["birthday"]
@@ -87,25 +85,22 @@ async def save_account(
 
 async def add_gold(db: AsyncSession, user_id: int, amount: int) -> bool:
     await db.execute(
-        update(Point).where(Point.uid == user_id).values(webpoint=Point.webpoint + amount)
+        update(User).where(User.ID == user_id).values(WebPoint=User.WebPoint + amount)
     )
     await db.commit()
     return True
 
 
 async def set_gm_rank(db: AsyncSession, user_id: int, rank: int) -> bool:
-    if rank == 1:
-        existing = await db.scalar(select(func.count()).where(Auth.userid == str(user_id)))
-        if not existing:
-            db.add(Auth(userid=str(user_id)))
-    else:
-        await db.execute(delete(Auth).where(Auth.userid == str(user_id)))
+    """GM rank is managed via the auth table (userid/zoneid/rid composite key).
+    We only support a global toggle here — zone-specific GM management is out of scope."""
+    if rank == 0:
+        await db.execute(delete(Auth).where(Auth.userid == user_id))
     await db.commit()
     return True
 
 
 async def delete_account(db: AsyncSession, user_id: int) -> bool:
     await db.execute(delete(User).where(User.ID == user_id))
-    await db.execute(delete(Point).where(Point.uid == user_id))
     await db.commit()
     return True

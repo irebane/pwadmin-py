@@ -1,44 +1,56 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, String, DateTime, Text, BigInteger
 from app.database import Base
 
 
 class User(Base):
     __tablename__ = "users"
     ID = Column(Integer, primary_key=True)
-    name = Column(String(64), unique=True, nullable=False)
-    passwd = Column(String(128), nullable=False)
-    email = Column(String(128), nullable=False)
+    name = Column(String(32), unique=True, nullable=False)
+    passwd = Column(String(64), nullable=False)
+    email = Column(String(64), nullable=False)
     idnumber = Column(String(32))
-    truename = Column(String(64))
-    sex = Column(Integer, default=0)
-    birthday = Column(String(16))
-    regtime = Column(DateTime, server_default=func.now())
-    webpoint = Column(Integer, default=0)
+    truename = Column(String(32))
+    gender = Column(Integer, default=0)
+    birthday = Column(DateTime)
+    creatime = Column(DateTime)
+    WebPoint = Column(Integer, default=0)
+    VotePoint = Column(Integer, default=0)
+    passwd2 = Column(String(64))
+    Prompt = Column(String(32), default="")
+    answer = Column(String(32), default="")
+    mobilenumber = Column(String(32))
+    qq = Column(String(32))
+    mudev = Column(Integer, default=0)
 
 
 class Point(Base):
+    """Login session / zone tracking table — not a points balance."""
     __tablename__ = "point"
     uid = Column(Integer, primary_key=True)
-    webpoint = Column(Integer, default=0)
-    loginpoint = Column(Integer, default=0)
-    zoneid = Column(Integer, nullable=True)
+    aid = Column(Integer, primary_key=True)
+    time = Column(Integer, default=0)
+    zoneid = Column(Integer)
+    zonelocalid = Column(Integer)
+    accountstart = Column(DateTime)
+    lastlogin = Column(DateTime)
+    enddate = Column(DateTime)
 
 
 class Auth(Base):
     __tablename__ = "auth"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    userid = Column(String(64))
+    userid = Column(Integer, primary_key=True)
+    zoneid = Column(Integer, primary_key=True)
+    rid = Column(Integer, primary_key=True)
 
 
 class Forbid(Base):
     __tablename__ = "forbid"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    userid = Column(String(64))
-    type = Column(Integer)
-    endtime = Column(Integer)
-    starttime = Column(Integer)
+    userid = Column(Integer, primary_key=True)
+    type = Column(Integer, primary_key=True)
+    ctime = Column(DateTime)
+    forbid_time = Column(Integer, default=0)
     reason = Column(Text)
+    gmroleid = Column(Integer)
 
 
 class IpLimit(Base):
