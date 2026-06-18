@@ -408,21 +408,39 @@
             <span class="text-xs px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-900 font-semibold">Active</span>
           </div>
 
+          <!-- elements.data source indicator -->
+          <div class="rounded-lg px-3 py-2.5 text-xs flex items-start gap-2"
+            :class="{
+              'bg-emerald-950/40 border border-emerald-900/40': elSource === 'server',
+              'bg-blue-950/40 border border-blue-900/40':     elSource === 'uploaded',
+              'bg-red-950/40 border border-red-900/40':       elSource === 'none'
+            }">
+            <span class="shrink-0 font-bold mt-0.5"
+              :class="{'text-emerald-400': elSource==='server','text-blue-400': elSource==='uploaded','text-red-400': elSource==='none'}">
+              <span x-show="elSource==='server'">✓</span>
+              <span x-show="elSource==='uploaded'" x-cloak>✓</span>
+              <span x-show="elSource==='none'" x-cloak>✗</span>
+            </span>
+            <div>
+              <span class="font-semibold"
+                :class="{'text-emerald-400': elSource==='server','text-blue-400': elSource==='uploaded','text-red-400': elSource==='none'}"
+                x-text="elSource==='server' ? 'Game server file' : elSource==='uploaded' ? 'Uploaded file' : 'No elements.data found'">
+              </span>
+              <span class="ml-1 text-slate-500 font-mono break-all" x-text="elPath"></span>
+            </div>
+          </div>
+
           <!-- Action buttons -->
           <div class="flex gap-2 flex-wrap">
-            <button @click="regenerate()" :disabled="busy"
+            <button @click="regenerate()" :disabled="busy || elSource==='none'"
               class="text-xs px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 rounded text-white font-semibold flex items-center gap-1.5">
-              <span x-show="!busy">↻ Regenerate from elements.data</span>
+              <span x-show="!busy">↻ Regenerate</span>
               <span x-show="busy" x-cloak>Scanning… (up to 90s)</span>
             </button>
             <button @click="showUpload = !showUpload"
               class="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 font-semibold">
               ↑ Upload elements.data
             </button>
-            <span x-show="uploadedEl" x-cloak
-              class="text-xs px-2 py-1.5 rounded bg-emerald-950/50 text-emerald-500 border border-emerald-900/50">
-              ✓ elements.data uploaded
-            </span>
           </div>
 
           <!-- Upload panel -->
@@ -773,6 +791,7 @@ function serverPage() {
 function itemDb() {
   return {
     current: null, backups: [], uploadedEl: false,
+    elSource: 'none', elPath: '',
     busy: false, msg: '', msgOk: true,
     showUpload: false, backupsOpen: false,
     uploadFile: null,
@@ -787,6 +806,8 @@ function itemDb() {
         this.current     = d.current;
         this.backups     = d.backups || [];
         this.uploadedEl  = d.uploaded_elements;
+        this.elSource    = d.el_source || 'none';
+        this.elPath      = d.el_path   || '';
         if (this.backups.length) this.backupsOpen = true;
       } catch(e) {}
     },
@@ -797,7 +818,7 @@ function itemDb() {
     },
 
     async regenerate() {
-      if (!confirm('Regenerate pw_items.json from elements.data? Current file will be backed up.')) return;
+      if (!confirm('Regenerate pw_items.json from:\n' + this.elPath + '\n\nCurrent file will be backed up first.')) return;
       this.busy = true; this.msg = '';
       try {
         const r = await fetch('/api/server/regenerate-items', { method: 'POST' });

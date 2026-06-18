@@ -175,8 +175,25 @@ async def items_files(user: dict = Depends(require_admin)):
         for f in sorted(_BACKUP_DIR.iterdir(), reverse=True):
             if _BAK_RE.match(f.name):
                 backups.append(_file_info(f))
-    uploaded_elements = _UPLOADED_EL.exists()
-    return {"current": current, "backups": backups, "uploaded_elements": uploaded_elements}
+
+    server_el = Path(f"{settings.server_path.rstrip('/')}/gamed/config/elements.data")
+    if server_el.exists():
+        el_source = "server"
+        el_path   = str(server_el)
+    elif _UPLOADED_EL.exists():
+        el_source = "uploaded"
+        el_path   = str(_UPLOADED_EL)
+    else:
+        el_source = "none"
+        el_path   = str(server_el)  # show expected path even if missing
+
+    return {
+        "current": current,
+        "backups": backups,
+        "uploaded_elements": _UPLOADED_EL.exists(),
+        "el_source": el_source,   # "server" | "uploaded" | "none"
+        "el_path":   el_path,
+    }
 
 
 class ActivateBody(BaseModel):
@@ -218,10 +235,16 @@ async def upload_elements(file: UploadFile = File(...), user: dict = Depends(req
     if not file.filename or not file.filename.endswith(".data"):
         raise HTTPException(400, detail="File must be a .data file")
     _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    # Destination is always the fixed path — never derived from the uploaded filename
+    dest = _UPLOADED_EL.resolve()
+    # Guard: refuse if dest somehow resolves to the live game file
+    game_el = Path(f"{settings.server_path.rstrip('/')}/gamed/config/elements.data").resolve()
+    if dest == game_el:
+        raise HTTPException(500, detail="Upload destination collision with live game file — check SERVER_PATH config")
     content = await file.read()
     if len(content) < 1024:
         raise HTTPException(400, detail="File too small to be a valid elements.data")
-    _UPLOADED_EL.write_bytes(content)
+    dest.write_bytes(content)
     return {"success": True, "size_mb": round(len(content) / 1024 / 1024, 1)}
 
 
