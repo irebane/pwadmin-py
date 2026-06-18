@@ -203,7 +203,7 @@
           <!-- Two-segment bar for restart, single for stop/start -->
           <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
             <div class="h-2 rounded-full transition-all duration-700"
-              :class="controlPhase === 'stopping' ? 'bg-amber-500' : 'bg-emerald-500'"
+              :class="controlPhase === 'stopping' ? 'bg-amber-500' : 'bg-blue-500'"
               :style="'width:' + controlProgress + '%'">
             </div>
           </div>
@@ -326,21 +326,22 @@ function serverPage() {
     /* status */
     cpuPct: 0, memTotal: 0, memUsed: 0, memFree: 0,
     services: [], glinkd: [], glinkdOpen: false,
-    controlling: false, controlAction: '', controlPhase: '', controlEstimate: '',
+    controlling: false, controlAction: '', controlPhase: '', controlEstimate: '', controlProgress: 0,
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
     get controlMsg() {
-      if (this.controlAction === 'stop')    return 'Stopping server services…';
-      if (this.controlAction === 'start')   return 'Starting server services…';
+      if (this.controlAction === 'stop')  return 'Stopping server services…';
+      if (this.controlAction === 'start') return 'Starting server services…';
       return this.controlPhase === 'stopping' ? 'Shutting down services…' : 'Starting services…';
     },
-    get controlProgress() {
-      const total = this.services.length || 1;
-      const online = this.services.filter(s => s.running).length;
-      if (this.controlAction === 'stop')  return Math.round((total - online) / total * 100);
-      if (this.controlAction === 'start') return Math.round(online / total * 100);
-      // restart: stopping phase fills 0→50, starting phase fills 50→100
-      if (this.controlPhase === 'stopping') return Math.round((total - online) / total * 50);
-      return 50 + Math.round(online / total * 50);
+    _advanceProgress(online, total) {
+      if (!total) return;
+      let pct;
+      if (this.controlAction === 'stop')  pct = Math.round((total - online) / total * 100);
+      else if (this.controlAction === 'start') pct = Math.round(online / total * 100);
+      else if (this.controlPhase === 'stopping') pct = Math.round((total - online) / total * 50);
+      else pct = 50 + Math.round(online / total * 50);
+      // bar never goes backward
+      if (pct > this.controlProgress) this.controlProgress = pct;
     },
 
     /* config */
@@ -429,9 +430,10 @@ function serverPage() {
 
     async serverAction(action) {
       if (!confirm('Server ' + action + '?')) return;
-      this.controlling  = true;
-      this.controlAction = action;
-      this.controlPhase  = action === 'start' ? 'starting' : 'stopping';
+      this.controlling   = true;
+      this.controlAction  = action;
+      this.controlPhase   = action === 'start' ? 'starting' : 'stopping';
+      this.controlProgress = 0;
       this.controlEstimate = {
         stop: 'Est. ~15 seconds',
         start: 'Est. ~45 seconds',
@@ -455,11 +457,12 @@ function serverPage() {
           const online = this.services.filter(s => s.running).length;
           const total  = this.services.length;
 
-          // Detect phase transition for restart: once majority are offline, switch to starting phase
+          // Phase transition: once ≤20% still online, switch to starting
           if (action === 'restart' && this.controlPhase === 'stopping' && online <= Math.floor(total * 0.2)) {
             this.controlPhase = 'starting';
           }
 
+          this._advanceProgress(online, total);
           if (this.anyRunning === wantRunning) break;
         }
       } catch(e) { alert('Network error'); }
