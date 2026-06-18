@@ -61,10 +61,11 @@ async def load_account_v2(db: AsyncSession, user_id: int) -> list:
         gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.creatime), "pending": 1}
         idx += 1
 
-    # characters
+    # characters — roles.account_id is the game's internal account ID (point.aid), not users.ID
     char_rows = await db.execute(
-        text("SELECT role_id, role_name, role_level, role_race, role_occupation "
-             "FROM roles WHERE account_id=:uid ORDER BY role_id ASC"),
+        text("SELECT r.role_id, r.role_name, r.role_level, r.role_race, r.role_occupation "
+             "FROM roles r JOIN point p ON p.aid = r.account_id WHERE p.uid=:uid "
+             "ORDER BY r.role_id ASC"),
         {"uid": user_id}
     )
     classes = settings.pw_classes_dict
