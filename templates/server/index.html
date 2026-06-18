@@ -189,15 +189,27 @@
 
         <!-- Reboot progress bar (between RAM and services table) -->
         <div x-show="controlling" x-cloak class="mb-4 rounded-lg border border-slate-700 bg-slate-800/40 px-4 py-3">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium text-slate-300" x-text="controlMsg"></span>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-medium text-slate-200" x-text="controlMsg"></span>
             <span class="text-xs text-slate-500"
               x-text="services.filter(s=>s.running).length + ' / ' + services.length + ' online'"></span>
           </div>
-          <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
-            <div class="h-1.5 rounded-full bg-blue-500 transition-all duration-500"
-              :style="'width:' + (services.length ? Math.round(services.filter(s=>s.running).length / services.length * 100) : 0) + '%'">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-slate-500" x-show="controlAction === 'restart'">
+              Phase: <span class="text-slate-400" x-text="controlPhase === 'stopping' ? '1/2 — Shutdown' : '2/2 — Boot'"></span>
+            </span>
+            <span class="text-xs text-slate-600 ml-auto" x-text="controlEstimate"></span>
+          </div>
+          <!-- Two-segment bar for restart, single for stop/start -->
+          <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+            <div class="h-2 rounded-full transition-all duration-700"
+              :class="controlPhase === 'stopping' ? 'bg-amber-500' : 'bg-emerald-500'"
+              :style="'width:' + controlProgress + '%'">
             </div>
+          </div>
+          <!-- Phase markers for restart -->
+          <div x-show="controlAction === 'restart'" class="relative mt-1 h-3">
+            <span class="absolute left-1/2 -translate-x-1/2 text-[10px] text-slate-600">▲ boot</span>
           </div>
         </div>
 
@@ -314,8 +326,22 @@ function serverPage() {
     /* status */
     cpuPct: 0, memTotal: 0, memUsed: 0, memFree: 0,
     services: [], glinkd: [], glinkdOpen: false,
-    controlling: false, controlMsg: '',
+    controlling: false, controlAction: '', controlPhase: '', controlEstimate: '',
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
+    get controlMsg() {
+      if (this.controlAction === 'stop')    return 'Stopping server services…';
+      if (this.controlAction === 'start')   return 'Starting server services…';
+      return this.controlPhase === 'stopping' ? 'Shutting down services…' : 'Starting services…';
+    },
+    get controlProgress() {
+      const total = this.services.length || 1;
+      const online = this.services.filter(s => s.running).length;
+      if (this.controlAction === 'stop')  return Math.round((total - online) / total * 100);
+      if (this.controlAction === 'start') return Math.round(online / total * 100);
+      // restart: stopping phase fills 0→50, starting phase fills 50→100
+      if (this.controlPhase === 'stopping') return Math.round((total - online) / total * 50);
+      return 50 + Math.round(online / total * 50);
+    },
 
     /* config */
     classMask: 0, classes: [],
@@ -403,9 +429,14 @@ function serverPage() {
 
     async serverAction(action) {
       if (!confirm('Server ' + action + '?')) return;
-      const label = {stop: 'Stopping', start: 'Starting', restart: 'Restarting'}[action] || action;
-      this.controlling = true;
-      this.controlMsg = label + ' server…';
+      this.controlling  = true;
+      this.controlAction = action;
+      this.controlPhase  = action === 'start' ? 'starting' : 'stopping';
+      this.controlEstimate = {
+        stop: 'Est. ~15 seconds',
+        start: 'Est. ~45 seconds',
+        restart: 'Est. ~60 seconds total',
+      }[action] || '';
       try {
         const r = await fetch('/api/server/control', {
           method: 'POST',
@@ -414,12 +445,21 @@ function serverPage() {
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) { this.controlling = false; alert('Error: ' + (d.detail || action + ' failed')); return; }
-        // Poll until status stabilises (up to 90s)
+
         const wantRunning = action !== 'stop';
-        const deadline = Date.now() + 90000;
+        const deadline = Date.now() + 120000;
+
         while (Date.now() < deadline) {
           await new Promise(res => setTimeout(res, 3000));
           await this.refreshStatus();
+          const online = this.services.filter(s => s.running).length;
+          const total  = this.services.length;
+
+          // Detect phase transition for restart: once majority are offline, switch to starting phase
+          if (action === 'restart' && this.controlPhase === 'stopping' && online <= Math.floor(total * 0.2)) {
+            this.controlPhase = 'starting';
+          }
+
           if (this.anyRunning === wantRunning) break;
         }
       } catch(e) { alert('Network error'); }
