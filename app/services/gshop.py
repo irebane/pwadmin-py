@@ -26,13 +26,18 @@ async def read_gshop() -> tuple[bytes, int]:
 
 def parse_gshop_records(raw: bytes) -> list[dict]:
     count = struct.unpack_from("<I", raw, 4)[0]
-    records = []
+    # gshopsev.data stores each item twice: once in a flat index (cat=0,sub=0)
+    # and once in its real category. Deduplicate by item_id, preferring the
+    # categorised entry (main_cat > 0 or sub_cat > 0) over the index entry.
+    seen: dict[int, dict] = {}  # item_id → best record so far
+    order: list[int] = []       # insertion order for stable display
+
     for i in range(count):
         offset = HEADER_SIZE + i * RECORD_SIZE
         if offset + RECORD_SIZE > len(raw):
             break
         f = struct.unpack_from("<37I", raw, offset)
-        records.append({
+        rec = {
             "idx": i,
             "shop_id": f[0],
             "main_cat": f[1],
@@ -42,8 +47,17 @@ def parse_gshop_records(raw: bytes) -> list[dict]:
             "price": f[5],
             "duration": f[7],
             "class_mask": f[9],
-        })
-    return records
+        }
+        iid = rec["item_id"]
+        prev = seen.get(iid)
+        if prev is None:
+            seen[iid] = rec
+            order.append(iid)
+        elif rec["main_cat"] > 0 or rec["sub_cat"] > 0:
+            # Categorised entry beats the (0,0) index entry
+            seen[iid] = rec
+
+    return [seen[iid] for iid in order]
 
 
 def build_gshop_binary(header: bytes, records: list[dict]) -> bytes:
