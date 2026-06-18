@@ -99,10 +99,11 @@
           <div class="mt-2 bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
             <div class="relative group">
               <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">Game Link Instances</span>
-              <div class="absolute bottom-full left-0 mb-2 w-72 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                <p class="text-xs text-slate-300 font-medium mb-1">Game Link Daemon instances</p>
-                <p class="text-xs text-slate-400 leading-relaxed">Each instance N listens for clients on port <code class="font-mono text-slate-300">2900(N−1)</code> and game zones on port <code class="font-mono text-slate-300">2930N</code>.</p>
-                <p class="text-xs text-amber-500 mt-1.5">⚠ Server restart required.</p>
+              <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                <p class="text-xs text-slate-300 font-medium mb-1.5">Game Link Daemon instances</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Saving any value fully regenerates the required sections in <code class="font-mono text-slate-300">gamesys.conf</code> and <code class="font-mono text-slate-300">gmserver.conf</code> — no manual file editing needed.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Each instance N listens for <span class="text-slate-300">clients</span> on port <code class="font-mono text-slate-300">2900(N−1)</code> and for <span class="text-slate-300">game zones</span> on port <code class="font-mono text-slate-300">2930N</code>. Each handles up to <span class="text-slate-300">3,000</span> concurrent connections.</p>
+                <p class="text-xs text-amber-500">⚠ Server restart required for changes to take effect.</p>
               </div>
             </div>
             <input type="number" x-model.number="glinkdCount" min="1" max="8"
@@ -111,10 +112,12 @@
           <div class="mt-2 bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
             <div class="relative group">
               <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">DB Workers</span>
-              <div class="absolute bottom-full left-0 mb-2 w-72 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                <p class="text-xs text-slate-300 font-medium mb-1">Game Database Daemon workers</p>
-                <p class="text-xs text-slate-400 leading-relaxed">1 worker per ~50 concurrent players, minimum 2. Each uses ~9.5 MB RAM. Total shown in status = setting + 6.</p>
-                <p class="text-xs text-amber-500 mt-1.5">⚠ Server restart required.</p>
+              <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                <p class="text-xs text-slate-300 font-medium mb-1.5">Game Database Daemon workers</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Each worker is a forked process that holds <span class="text-slate-300">one MySQL connection</span> and handles character saves, item operations, and trades. Uses <span class="text-slate-300">~9.5 MB RAM</span> per worker.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Rule of thumb: <span class="text-slate-300">1 worker per 50 concurrent players</span>, minimum 2. For a small family server 2 is plenty.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2"><span class="text-slate-300">Server Status shows total processes</span>, not just workers. 6 fixed overhead processes are always present (parent, I/O, timer, dispatcher forks), so <span class="text-slate-300">total = setting + 6</span>. Setting 2 → 8 shown in status.</p>
+                <p class="text-xs text-amber-500">⚠ Server restart required for changes to take effect.</p>
               </div>
             </div>
             <input type="number" x-model.number="dbWorkers" min="1" max="32"
@@ -123,10 +126,12 @@
           <div class="mt-2 bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
             <div class="relative group">
               <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">Name Workers</span>
-              <div class="absolute bottom-full left-0 mb-2 w-72 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                <p class="text-xs text-slate-300 font-medium mb-1">Unique Name Daemon workers</p>
-                <p class="text-xs text-slate-400 leading-relaxed">Used only during character creation/rename. 1 worker is sufficient for any server size. Total in status = setting + 6.</p>
-                <p class="text-xs text-amber-500 mt-1.5">⚠ Server restart required.</p>
+              <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                <p class="text-xs text-slate-300 font-medium mb-1.5">Unique Name Daemon workers</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Consulted only during <span class="text-slate-300">character creation and rename</span> to enforce name uniqueness. Not involved in normal gameplay at all.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2"><span class="text-slate-300">1 worker is sufficient for any server size</span> — name checks are infrequent and fast.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2"><span class="text-slate-300">Server Status shows total processes</span>, not just workers. 6 fixed overhead processes are always present, so <span class="text-slate-300">total = setting + 6</span>. Setting 1 → 7 shown in status.</p>
+                <p class="text-xs text-amber-500">⚠ Server restart required for changes to take effect.</p>
               </div>
             </div>
             <input type="number" x-model.number="nameWorkers" min="1" max="8"
