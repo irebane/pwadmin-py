@@ -321,7 +321,8 @@ function EditUserData(userData){
 			document.getElementById('AccInfoRD').innerHTML=uct;
 			document.getElementById('AccInfoRegIp').innerHTML=userRegIp;
 			document.getElementById('AccInfoLoginIp').innerHTML=userLoginIp;
-			document.getElementById('AccInfoWP').innerHTML=ExchPoint;
+			var accWP=document.getElementById('AccInfoWP');
+			if(accWP) accWP.innerHTML=ExchPoint;
 			ExchMaxG=parseInt(ExchPoint/ExchRate,10);
 			document.getElementById('CurUnam').value=uname;
 			document.getElementById('CurUId').value=uid;
