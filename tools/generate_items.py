@@ -23,26 +23,111 @@ from pathlib import Path
 OUTPUT = Path("data/pw_items.json")
 BACKUP_DIR = Path("data/backups")
 
-# Item type/subtype mapping: (type_id, subtype_id) → (type_name, sub_name)
-# Mirrors the item builder category structure.
-# Weapons
-WEAPON_TYPE = 1
-ARMOR_TYPE   = 2
-JEWEL_TYPE   = 3
-# type_id → list of subtype names (index = subtype_id - 1)
-TYPE_NAMES = {
-    1: "Weapon", 2: "Armor", 3: "Jewelry",
-    4: "Flyer/Pet", 5: "Elf", 6: "Fashion",
-    7: "Misc", 8: "Other",
+_CONFIGS_DIR = Path(__file__).parent / "configs"
+
+# filename → (data_version, pw_version_str)
+_VERSION_RE = re.compile(r'PW_([\d.]+)_v(\d+)(?:_\d+)?\.cfg$')
+
+
+def list_configs() -> list[dict]:
+    """Return all available configs sorted by data version."""
+    out = []
+    for f in sorted(_CONFIGS_DIR.glob("PW_*.cfg")):
+        m = _VERSION_RE.search(f.name)
+        if m:
+            out.append({
+                "name": f.name,
+                "pw_version": m.group(1),
+                "data_version": int(m.group(2)),
+            })
+    return sorted(out, key=lambda x: x["data_version"])
+
+
+def detect_config(elements_path: str) -> str | None:
+    """
+    Read the version int16 from elements.data header and return the matching
+    config filename. Falls back to the closest lower version if no exact match.
+    Returns None if configs directory is missing.
+    """
+    if not _CONFIGS_DIR.exists():
+        return None
+    try:
+        with open(elements_path, "rb") as fh:
+            raw = fh.read(2)
+        ver = struct.unpack_from("<h", raw)[0]
+    except Exception:
+        return None
+
+    configs = list_configs()
+    if not configs:
+        return None
+
+    # Exact match: pick highest PW version among all configs with the same data version
+    exact = [c for c in configs if c["data_version"] == ver]
+    if exact:
+        return sorted(exact, key=lambda x: [int(p) for p in x["pw_version"].split(".")])[-1]["name"]
+
+    # Closest version ≤ detected
+    below = [c for c in configs if c["data_version"] <= ver]
+    if below:
+        return below[-1]["name"]  # list is sorted ascending, so last = closest
+    return configs[0]["name"]
+
+# Maps element table name → (pw_type, pw_subtype_field_or_fixed)
+# pw_subtype is either an int (fixed) or a field name (read from record)
+# pw_type: 1=Weapon, 2=Armor, 3=Jewelry, 4=Flyer/Pet, 5=Elf, 6=Fashion, 7=Misc
+_TABLE_MAP = {
+    "004 - WEAPON_ESSENCE":     (1, "id_sub_type"),
+    "007 - ARMOR_ESSENCE":      (2, "id_sub_type"),
+    "010 - DECORATION_ESSENCE": (3, "id_sub_type"),
+    "013 - MEDICINE_ESSENCE":   (7, 1),
+    "016 - MATERIAL_ESSENCE":   (7, 2),
+    "018 - DAMAGERUNE_ESSENCE": (5, 1),
+    "020 - ARMORRUNE_ESSENCE":  (5, 2),
+    "022 - SKILLTOME_ESSENCE":  (7, 3),
+    "023 - FLYSWORD_ESSENCE":   (4, 1),
+    "024 - WINGMANWING_ESSENCE":(4, 2),
+    "025 - TOWNSCROLL_ESSENCE": (7, 4),
+    "026 - UNIONSCROLL_ESSENCE":(7, 4),
+    "027 - REVIVESCROLL_ESSENCE":(7,4),
+    "028 - ELEMENT_ESSENCE":    (7, 4),
+    "029 - TASKMATTER_ESSENCE": (7, 5),
+    "030 - TOSSMATTER_ESSENCE": (7, 5),
+    "032 - PROJECTILE_ESSENCE": (7, 5),
+    "034 - QUIVER_ESSENCE":     (7, 5),
+    "036 - STONE_ESSENCE":      (7, 6),
+    "084 - FASHION_ESSENCE":    (6, "id_sub_type"),
+    "087 - FACETICKET_ESSENCE": (7, 7),   # makeover scrolls → misc
+    "090 - FACEPILL_ESSENCE":   (7, 7),
+    "095 - PET_ESSENCE":        (4, 3),
+    "096 - PET_EGG_ESSENCE":    (4, 4),
+    "097 - PET_FOOD_ESSENCE":   (7, 7),
+    "098 - PET_FACETICKET_ESSENCE":(7, 7),
+    "099 - FIREWORKS_ESSENCE":  (7, 7),
+    "100 - WAR_TANKCALLIN_ESSENCE":(4, 5),
+    "107 - SKILLMATTER_ESSENCE":(7, 3),
+    "108 - REFINE_TICKET_ESSENCE":(7, 8),
+    "109 - DESTROYING_ESSENCE": (7, 8),
+    "113 - BIBLE_ESSENCE":      (7, 8),
+    "114 - SPEAKER_ESSENCE":    (7, 8),
+    "115 - AUTOHP_ESSENCE":     (7, 1),
+    "116 - AUTOMP_ESSENCE":     (7, 1),
+    "117 - DOUBLE_EXP_ESSENCE": (7, 8),
+    "118 - TRANSMITSCROLL_ESSENCE":(7, 4),
+    "119 - DYE_TICKET_ESSENCE": (6, 9),
+    "120 - GOBLIN_ESSENCE":     (4, 5),
+    "122 - GOBLIN_EQUIP_ESSENCE":(4, 5),
+    "123 - GOBLIN_EXPPILL_ESSENCE":(7, 8),
+    "124 - SELL_CERTIFICATE_ESSENCE":(7, 8),
+    "125 - TARGET_ITEM_ESSENCE":(7, 8),
+    "126 - LOOK_INFO_ESSENCE":  (7, 8),
 }
 
-
-# ── PHP converter ─────────────────────────────────────────────────────────────
+# ── PHP converter ──────────────────────────────────────────────────────────────
 
 def from_php(php_path: str) -> dict:
     """Parse $ItemMod[type][sub][] = "name#id#..."; assignments."""
     text = Path(php_path).read_text(encoding="utf-8", errors="replace")
-    # Match both $ItemMod[t][s][n] and $ItemMod[t][s][]
     pattern = re.compile(
         r'\$ItemMod\s*\[(\d+)\]\s*\[(\d+)\]\s*(?:\[\d*\])?\s*=\s*"([^"]+)"\s*;'
     )
@@ -53,207 +138,279 @@ def from_php(php_path: str) -> dict:
     return result
 
 
-# ── elements.data scanner ─────────────────────────────────────────────────────
+# ── Config parser ──────────────────────────────────────────────────────────────
 
-# Known (item_id → (type, subtype)) from the existing php structure.
-# We read this from pw_items.json if available, to anchor the scan.
-def _build_anchor_map(existing_json: dict) -> dict[int, tuple[int, int]]:
-    # Exclude type 8 / subtype 99 — that's the auto-generated bucket, always rebuilt.
-    anchor: dict[int, tuple[int, int]] = {}
-    for t_str, subs in existing_json.items():
-        for s_str, entries in subs.items():
-            if t_str == "8" and s_str == "99":
-                continue
-            vals = entries.values() if isinstance(entries, dict) else entries
-            for entry in vals:
-                parts = entry.split("#")
-                if len(parts) >= 2:
-                    try:
-                        anchor[int(parts[1])] = (int(t_str), int(s_str))
-                    except ValueError:
-                        pass
-    return anchor
-
-
-def _read_utf16le_str(data: bytes, offset: int, max_chars: int = 64) -> str:
-    """Read null-terminated UTF-16LE string from offset."""
-    end = offset
-    limit = min(offset + max_chars * 2, len(data) - 1)
-    while end + 1 < limit:
-        if data[end] == 0 and data[end + 1] == 0:
-            break
-        end += 2
-    try:
-        return data[offset:end].decode("utf-16-le", errors="replace")
-    except Exception:
-        return ""
+def _resolve_cfg(cfg_name: str | None, elements_path: str | None) -> Path:
+    """Return the Path to the config to use."""
+    if cfg_name:
+        p = _CONFIGS_DIR / cfg_name
+        if not p.exists():
+            print(f"ERROR: config '{cfg_name}' not found in {_CONFIGS_DIR}", file=sys.stderr)
+            sys.exit(1)
+        return p
+    if elements_path:
+        detected = detect_config(elements_path)
+        if detected:
+            return _CONFIGS_DIR / detected
+    # Last resort: old bundled file next to the script
+    fallback = Path(__file__).parent / "PW_1.4.2_v27.cfg"
+    if fallback.exists():
+        return fallback
+    print(f"ERROR: no config file found. Put configs in {_CONFIGS_DIR}", file=sys.stderr)
+    sys.exit(1)
 
 
-_STAR = set("☆★✦")
-_VALID_NAME = re.compile(
-    r'^[☆★✦]*[A-Z一-鿿][A-Za-z0-9\s一-鿿·\'\-\+\.\!\(\)\[\]☆★✦°·:,&%]{1,50}$'
-)
+def _load_config(cfg_path: Path) -> tuple[int, list[dict]]:
+    """
+    Parse PW_1.4.2_v27.cfg. Returns (conversation_list_index, tables[]).
+    Each table dict has: name, offset (int or 'AUTO'), fields[], types[], rec_size.
+    """
+    lines = cfg_path.read_text(encoding="utf-8").splitlines()
+    i = 0
+    while i < len(lines) and not lines[i].strip(): i += 1
+    _table_count = int(lines[i]); i += 1
+    conv_idx = int(lines[i]); i += 1
+
+    tables = []
+    while i < len(lines):
+        while i < len(lines) and not lines[i].strip(): i += 1
+        if i >= len(lines): break
+        name = lines[i].strip(); i += 1
+        raw_off = lines[i].strip(); i += 1
+        offset = int(raw_off) if raw_off.isdigit() else raw_off  # int or 'AUTO'
+        fields = lines[i].strip().split(';'); i += 1
+        types  = lines[i].strip().split(';'); i += 1
+        if i < len(lines) and not lines[i].strip(): i += 1
+
+        rec_size = 0
+        for t in types:
+            if t in ('int32', 'float'): rec_size += 4
+            elif t == 'int16': rec_size += 2
+            elif t in ('int64', 'double'): rec_size += 8
+            elif t.startswith('wstring:'): rec_size += int(t[8:])
+            elif t.startswith('string:'): rec_size += int(t[7:])
+            elif t.startswith('byte:') and t[5:].isdigit(): rec_size += int(t[5:])
+            # byte:AUTO → 0 (special case, handled separately)
+        tables.append({'name': name, 'offset': offset, 'fields': fields,
+                       'types': types, 'rec_size': rec_size})
+    return conv_idx, tables
+
+
+# ── Binary reader ──────────────────────────────────────────────────────────────
+
+def _read_field(data: bytes, pos: int, ftype: str) -> tuple[object, int]:
+    """Read one field at pos, return (value, new_pos)."""
+    if ftype == 'int32':
+        return struct.unpack_from('<i', data, pos)[0], pos + 4
+    if ftype == 'float':
+        return struct.unpack_from('<f', data, pos)[0], pos + 4
+    if ftype == 'int16':
+        return struct.unpack_from('<h', data, pos)[0], pos + 2
+    if ftype == 'int64':
+        return struct.unpack_from('<q', data, pos)[0], pos + 8
+    if ftype == 'double':
+        return struct.unpack_from('<d', data, pos)[0], pos + 8
+    if ftype.startswith('wstring:'):
+        n = int(ftype[8:])
+        raw = data[pos:pos + n]
+        end = 0
+        while end + 1 < len(raw) and (raw[end] or raw[end + 1]):
+            end += 2
+        return raw[:end].decode('utf-16-le', errors='replace'), pos + n
+    if ftype.startswith('string:'):
+        n = int(ftype[7:])
+        raw = data[pos:pos + n]
+        end = raw.find(b'\x00')
+        return raw[:end if end != -1 else n].decode('gbk', errors='replace'), pos + n
+    if ftype.startswith('byte:') and ftype[5:].isdigit():
+        n = int(ftype[5:])
+        return data[pos:pos + n], pos + n
+    return None, pos
+
+
 _NA_PREFIX = re.compile(r'^N/A\s*')
-_CJK = re.compile(r'[一-鿿]')
-
-# NPC job titles and zone labels that appear in element tables but are not items
-_NPC_WORDS = re.compile(
-    r'\b(Blacksmith|Apothecary|Tailor|Jeweler|Herbalist|Craftsman|Warehouse|'
-    r'Merchant|Vendor|Banker|Bounty|Trainer|Healer|Auctioneer|'
-    r'Dealer|Trader|Supplier|Refiner|Teleporter|Sculptor|'
-    r'Guard|Warden|Sentry|Ambassador|Envoy|Emissary|'
-    r'Elder|Master|Chief|Captain|General|Commander|'
-    r'Traveling|RootNode|Checkpoint|Courier)\b',
-    re.IGNORECASE,
-)
-# Stat descriptions, abbreviated or full, and bare UI strings
-_STAT_NAME = re.compile(
-    r'\b(Damage|Defense|Accuracy|Evasion|HP|MP|Mana|Mdef|Pdef|'
-    r'Dmg|Atk|Def|Acc|Eva|Crit|Phys|Mag|Max)\b.{0,6}[+\-]\d+'
-    r'|'
-    r'\bPage\s+\d+'  # "Page 1", "Page 2" — UI pagination strings
-)
 
 
-def _is_cjk(name: str) -> bool:
-    return bool(_CJK.search(name))
+def _read_name(raw: str) -> str:
+    return _NA_PREFIX.sub('', raw).strip()
 
 
-def _is_valid_item_name(name: str) -> bool:
-    if not name or len(name) < 3 or len(name) > 55:
-        return False
-    clean = name.lstrip("☆★✦ ")
-    if not clean or not (clean[0].isupper() or '一' <= clean[0] <= '鿿'):
-        return False
-    if clean.replace(" ", "").isdigit():
-        return False
-    # Reject quest dialog (sentence fragments)
-    if re.search(r'\b(you|the|and|for|have|that|this|with|from|your|are|was|will)\b', name, re.IGNORECASE):
-        return False
-    # Reject NPC job titles and zone/UI labels
-    if _NPC_WORDS.search(name):
-        return False
-    # Reject stat description strings
-    if _STAT_NAME.search(name):
-        return False
-    return bool(_VALID_NAME.match(name))
+# ── elements.data parser ───────────────────────────────────────────────────────
 
-
-def from_elements(elements_path: str, existing: dict | None = None) -> dict:
+def from_elements(elements_path: str, _existing: dict | None = None,
+                  cfg_name: str | None = None) -> dict:
     """
-    Scan elements.data for item records.
-
-    Strategy:
-      - The file contains tables. Within each table, records have:
-          uint32 item_id at a fixed offset,
-          UTF-16LE null-terminated name string 12 bytes after the item_id.
-      - We scan all 4-byte-aligned offsets for uint32 values in the valid
-        item_id range (100–40000), then check for a valid UTF-16LE name
-        12 bytes later.
-      - We use the existing pw_items.json to resolve type/subtype placement.
-        Items not in the existing map go into a catch-all "other" bucket.
+    Parse elements.data using the version-matched config schema.
+    Correctly categorises every item by which essence table it comes from.
+    Returns the pw_items.json structure.
     """
+    cfg_path = _resolve_cfg(cfg_name, elements_path)
+    print(f"Using config: {cfg_path.name}", file=sys.stderr)
+
+    conv_idx, tables = _load_config(cfg_path)
     data = Path(elements_path).read_bytes()
-    anchor = _build_anchor_map(existing or {})
+    print(f"Loaded {len(data):,} bytes, {len(tables)} tables defined.", file=sys.stderr)
 
-    # Collect all (item_id → name) pairs found in the binary.
-    # Elements.data has multiple table types with different record layouts:
-    #   weapons/armor/jewelry: item_id at record+0, name at item_id+12
-    #   fashion/wings/misc:    item_id at record+0, name at item_id+4
-    #   some tables:           item_id at record+2, name at item_id+4  (2-byte aligned)
-    # We scan every 2 bytes and try names at both +4 and +12.
-    #
-    # The same numeric ID can appear in multiple tables (e.g. item table AND
-    # recipe table), so we apply a priority:
-    #   1. English names beat Chinese names (game client shows English)
-    #   2. Within the same language, longer name wins (more specific table)
-    found: dict[int, tuple[str, bool]] = {}  # id → (name, is_english)
-    n = len(data) - 20
+    pos = 0
+    version  = struct.unpack_from('<h', data, pos)[0]; pos += 2
+    _sig     = struct.unpack_from('<h', data, pos)[0]; pos += 2
+    print(f"elements.data version={version}", file=sys.stderr)
 
-    print(f"Scanning {len(data):,} bytes …", file=sys.stderr)
+    # Collected items: {(pw_type, pw_subtype): [(id, name), ...]}
+    items_by_cat: dict[tuple[int,int], list[tuple[int,str]]] = {}
+    # Sub-type name lookup tables read from the file
+    weapon_sub: dict[int, str] = {}    # id → name
+    armor_sub: dict[int, str] = {}
+    deco_sub: dict[int, str] = {}
+    fashion_sub: dict[int, str] = {}
 
-    for i in range(0, n, 2):
-        item_id = struct.unpack_from("<I", data, i)[0]
-        if not (4000 <= item_id <= 40000):
+    for idx, tbl in enumerate(tables):
+        name = tbl['name']
+
+        # ── Handle offset section ──────────────────────────────────────────
+        if idx == 0:
+            # EQUIPMENT_ADDON: fixed 4-byte offset blob before count
+            pos += tbl['offset']  # offset == 4
+        elif tbl['offset'] == 'AUTO' and idx == 20:
+            # SKILLTOME_SUB_TYPE: 4-byte tag + 4-byte len + len bytes + 4 bytes
+            _tag = data[pos:pos+4]; pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len
+            pos += 4
+        elif tbl['offset'] == 'AUTO' and idx == 100:
+            # NPC_WAR_TOWERBUILD_SERVICE: 4-byte tag + 4-byte len + len bytes
+            _tag = data[pos:pos+4]; pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len
+        elif isinstance(tbl['offset'], int) and tbl['offset'] > 0:
+            pos += tbl['offset']
+
+        # ── Conversation list (TALK_PROC at conv_idx) — auto-size blob ────
+        if idx == conv_idx:
+            pattern = b'facedata\\'
+            pat_pos = data.find(pattern, pos)
+            if pat_pos == -1:
+                print(f"WARNING: TALK_PROC pattern not found, aborting at table {idx}", file=sys.stderr)
+                break
+            list_length = pat_pos - pos - 72
+            if list_length < 0:
+                list_length = 0
+            pos += list_length
+            continue  # no record_count follows for this table
+
+        # ── Read records ───────────────────────────────────────────────────
+        if pos + 4 > len(data):
+            break
+        count = struct.unpack_from('<i', data, pos)[0]; pos += 4
+
+        if count < 0 or count > 200_000:
+            print(f"  [{idx:3d}] {name}: implausible count={count}, stopping", file=sys.stderr)
+            break
+
+        rec_size = tbl['rec_size']
+        if rec_size == 0:
+            # Unknown-size table with no records — skip
             continue
-        # Try name at +4 (fashion/misc) and +12 (weapons/armor); keep best
-        best, best_is_eng = "", True
-        for name_off in (i + 4, i + 12):
-            if name_off + 4 > len(data):
-                continue
-            name = _read_utf16le_str(data, name_off, max_chars=48)
-            name = _NA_PREFIX.sub("", name).strip()
-            if not _is_valid_item_name(name):
-                continue
-            is_eng = not _is_cjk(name)
-            # Pick this name if: it's English and current best is Chinese,
-            # or same language and longer
-            if (is_eng and not best_is_eng) or \
-               (is_eng == best_is_eng and len(name) > len(best)):
-                best, best_is_eng = name, is_eng
-        if not best:
+
+        # Decide whether we care about this table
+        is_sub_type   = name.endswith('SUB_TYPE') or name.endswith('MAJOR_TYPE')
+        table_mapping = _TABLE_MAP.get(name)
+        want = is_sub_type or (table_mapping is not None)
+
+        if not want:
+            # Fast skip: jump over all records without parsing
+            pos += count * rec_size
             continue
-        # Compare against previously stored name for this ID
-        prev = found.get(item_id)
-        if prev is None:
-            found[item_id] = (best, best_is_eng)
-        else:
-            prev_name, prev_is_eng = prev
-            if (best_is_eng and not prev_is_eng) or \
-               (best_is_eng == prev_is_eng and len(best) > len(prev_name)):
-                found[item_id] = (best, best_is_eng)
 
-    print(f"Found {len(found):,} raw item_id/name pairs.", file=sys.stderr)
+        fields = tbl['fields']
+        types  = tbl['types']
 
-    # Build result: start from existing structure, update/add names.
-    # Type "8"/subtype "99" is our auto-generated bucket — always rebuild it
-    # from scratch so stale or Chinese-named entries from prior runs are removed.
+        for _ in range(count):
+            rec_start = pos
+            record: dict = {}
+            for fld, ftype in zip(fields, types):
+                v, pos = _read_field(data, pos, ftype)
+                record[fld] = v
+            # Verify we consumed exactly rec_size bytes
+            if pos != rec_start + rec_size:
+                pos = rec_start + rec_size  # self-correct
+
+            # ── Store sub-type name tables ─────────────────────────────────
+            if name == '003 - WEAPON_SUB_TYPE':
+                weapon_sub[record.get('ID', 0)] = record.get('Name', '')
+            elif name == '006 - ARMOR_SUB_TYPE':
+                armor_sub[record.get('ID', 0)] = record.get('Name', '')
+            elif name == '009 - DECORATION_SUB_TYPE':
+                deco_sub[record.get('ID', 0)] = record.get('Name', '')
+            elif name == '083 - FASHION_SUB_TYPE':
+                fashion_sub[record.get('ID', 0)] = record.get('Name', '')
+
+            # ── Store item essence records ─────────────────────────────────
+            if table_mapping:
+                pw_type, sub_spec = table_mapping
+                item_id = record.get('ID', 0)
+                raw_name = record.get('Name', '') or ''
+                item_name = _read_name(raw_name)
+
+                if not item_id or not item_name:
+                    continue
+
+                # Determine subtype
+                if isinstance(sub_spec, str):
+                    pw_sub = record.get(sub_spec, 0) or 0
+                else:
+                    pw_sub = sub_spec
+
+                key = (pw_type, pw_sub)
+                items_by_cat.setdefault(key, []).append((item_id, item_name))
+
+    print(f"Parsed {sum(len(v) for v in items_by_cat.values()):,} raw item records "
+          f"across {len(items_by_cat)} categories.", file=sys.stderr)
+
+    # ── Build output ───────────────────────────────────────────────────────────
+    # Merge weapon/armor sub-type name lookups into the category keys where
+    # id_sub_type was used — remap numeric sub IDs to 1-based sequential ints
+    # per type so pw_items.json sub-keys stay small integers.
+    def _sequential_sub(type_id: int, raw_sub: int, sub_name_map: dict) -> int:
+        """Remap raw sub_type ID to a stable 1-based index within this type."""
+        if type_id not in _sub_remap:
+            _sub_remap[type_id] = {}
+        remap = _sub_remap[type_id]
+        if raw_sub not in remap:
+            remap[raw_sub] = len(remap) + 1
+        return remap[raw_sub]
+
+    _sub_remap: dict[int, dict[int, int]] = {}
+
     result: dict[str, dict[str, list]] = {}
-    if existing:
-        for t_str, subs in existing.items():
-            result[t_str] = {}
-            for s_str, entries in subs.items():
-                if t_str == "8" and s_str == "99":
-                    continue  # rebuilt below
-                vals = list(entries.values() if isinstance(entries, dict) else entries)
-                result[t_str][s_str] = []
-                for entry in vals:
-                    parts = entry.split("#")
-                    try:
-                        iid = int(parts[1])
-                    except (ValueError, IndexError):
-                        result[t_str][s_str].append(entry)
-                        continue
-                    if iid not in found:
-                        continue  # item ID not in this server's elements.data — drop it
-                    name, is_eng = found[iid]
-                    if is_eng:  # only overwrite with English names
-                        parts[0] = name
-                        entry = "#".join(parts)
-                    result[t_str][s_str].append(entry)
 
-    # Add newly found items not in existing (into type "8", subtype "99")
-    existing_ids = set(anchor.keys())
-    # Deduplicate by name — same NPC/mob in multiple zones shares one name
-    seen_names: set[str] = set()
-    new_items = []
-    for iid, (name, is_eng) in sorted(found.items()):
-        if iid in existing_ids or not is_eng:
-            continue
-        if name in seen_names:
-            continue
-        seen_names.add(name)
-        new_items.append((iid, name))
-    if new_items:
-        result.setdefault("8", {}).setdefault("99", [])
-        for iid, name in new_items:
-            result["8"]["99"].append(f"{name}#{iid}#0#0#0")
-        print(f"Added {len(new_items):,} new items to type 8/subtype 99.", file=sys.stderr)
+    # Types where sub comes from id_sub_type (need remapping)
+    dynamic_sub_types = {1, 2, 3, 6}
 
+    seen_ids: set[int] = set()
+
+    for (pw_type, pw_sub), entries in sorted(items_by_cat.items()):
+        if pw_type in dynamic_sub_types:
+            mapped_sub = _sequential_sub(pw_type, pw_sub, {})
+        else:
+            mapped_sub = pw_sub
+
+        t_str = str(pw_type)
+        s_str = str(mapped_sub)
+        bucket = result.setdefault(t_str, {}).setdefault(s_str, [])
+
+        for item_id, item_name in entries:
+            if item_id in seen_ids:
+                continue
+            seen_ids.add(item_id)
+            bucket.append(f"{item_name}#{item_id}#0#0#0")
+
+    total = sum(len(v) for subs in result.values() for v in subs.values())
+    print(f"Built {total:,} unique items across {len(result)} types.", file=sys.stderr)
     return result
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate pw_items.json")
@@ -263,6 +420,8 @@ def main() -> None:
                         help="Path to elements.data (default: read from .env SERVER_PATH)")
     parser.add_argument("--php", default=None,
                         help="Path to pw_items.php")
+    parser.add_argument("--config", default=None,
+                        help="Config filename to use, e.g. PW_1.4.2_v27.cfg (default: auto-detect from elements.data version)")
     parser.add_argument("--output", default=str(OUTPUT),
                         help=f"Output JSON path (default: {OUTPUT})")
     parser.add_argument("--no-backup", action="store_true",
@@ -272,16 +431,13 @@ def main() -> None:
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Load existing JSON for structure anchoring
     existing: dict | None = None
     if out_path.exists():
         try:
             existing = json.loads(out_path.read_text(encoding="utf-8"))
-            print(f"Loaded existing {out_path} ({len(str(existing)):,} chars)", file=sys.stderr)
         except Exception as e:
             print(f"Warning: could not read existing JSON: {e}", file=sys.stderr)
 
-    # Backup
     if not args.no_backup and out_path.exists():
         from datetime import datetime
         BACKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -290,11 +446,9 @@ def main() -> None:
         shutil.copy2(out_path, bak)
         print(f"Backup saved to {bak}", file=sys.stderr)
 
-    # Generate
     if args.source == "php":
         php_path = args.php
         if not php_path:
-            # Try default location relative to this script
             default = Path(__file__).parent.parent.parent / "pwadmin/php/pw_items.php"
             if default.exists():
                 php_path = str(default)
@@ -307,7 +461,6 @@ def main() -> None:
     else:  # elements
         el_path = args.elements
         if not el_path:
-            # Try to read from .env
             env_file = Path(__file__).parent.parent / ".env"
             server_path = "/home"
             if env_file.exists():
@@ -318,10 +471,9 @@ def main() -> None:
         if not Path(el_path).exists():
             print(f"Error: elements.data not found at {el_path}", file=sys.stderr)
             sys.exit(1)
-        print(f"Scanning elements.data: {el_path}", file=sys.stderr)
-        result = from_elements(el_path, existing)
+        print(f"Parsing elements.data: {el_path}", file=sys.stderr)
+        result = from_elements(el_path, existing, cfg_name=args.config)
 
-    # Write output
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=None), encoding="utf-8")
     total = sum(len(v) for subs in result.values() for v in subs.values())
     print(f"Written {total:,} items to {out_path}", file=sys.stderr)

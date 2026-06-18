@@ -430,6 +430,24 @@
             </div>
           </div>
 
+          <!-- Config selector -->
+          <div x-show="configs.length > 0" class="space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Config</span>
+              <span x-show="detectedCfg" x-cloak class="text-xs text-slate-600"
+                x-text="selectedCfg === detectedCfg ? '✓ auto-detected' : 'manually selected'"></span>
+            </div>
+            <select x-model="selectedCfg"
+              class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-blue-600">
+              <template x-for="c in configs" :key="c.name">
+                <option :value="c.name"
+                  :class="c.name === detectedCfg ? 'font-semibold' : ''"
+                  x-text="c.pw_version + ' (v' + c.data_version + ')' + (c.name === detectedCfg ? ' ← detected' : '')">
+                </option>
+              </template>
+            </select>
+          </div>
+
           <!-- Action buttons -->
           <div class="flex gap-2 flex-wrap">
             <button @click="regenerate()" :disabled="busy || elSource==='none'"
@@ -795,8 +813,9 @@ function itemDb() {
     busy: false, msg: '', msgOk: true,
     showUpload: false, backupsOpen: false,
     uploadFile: null,
+    configs: [], detectedCfg: '', selectedCfg: '',
 
-    async init() { await this.load(); },
+    async init() { await Promise.all([this.load(), this.loadConfigs()]); },
 
     async load() {
       try {
@@ -812,16 +831,32 @@ function itemDb() {
       } catch(e) {}
     },
 
+    async loadConfigs() {
+      try {
+        const r = await fetch('/api/server/item-configs');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.configs     = d.configs || [];
+        this.detectedCfg = d.detected || '';
+        if (!this.selectedCfg) this.selectedCfg = this.detectedCfg || (this.configs[0] || {}).name || '';
+      } catch(e) {}
+    },
+
     flash(text, ok) {
       this.msg = text; this.msgOk = ok;
       setTimeout(() => this.msg = '', ok ? 4000 : 8000);
     },
 
     async regenerate() {
-      if (!confirm('Regenerate pw_items.json from:\n' + this.elPath + '\n\nCurrent file will be backed up first.')) return;
+      const cfgLabel = this.selectedCfg || 'auto-detect';
+      if (!confirm('Regenerate pw_items.json?\n\nelements.data: ' + this.elPath + '\nConfig: ' + cfgLabel + '\n\nCurrent file will be backed up first.')) return;
       this.busy = true; this.msg = '';
       try {
-        const r = await fetch('/api/server/regenerate-items', { method: 'POST' });
+        const r = await fetch('/api/server/regenerate-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config: this.selectedCfg }),
+        });
         const d = await r.json().catch(() => ({}));
         if (r.ok) {
           this.flash('Done — ' + d.total_items + ' items written.', true);

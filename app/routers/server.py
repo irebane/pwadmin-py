@@ -248,8 +248,30 @@ async def upload_elements(file: UploadFile = File(...), user: dict = Depends(req
     return {"success": True, "size_mb": round(len(content) / 1024 / 1024, 1)}
 
 
+@router.get("/item-configs")
+async def item_configs(user: dict = Depends(require_admin)):
+    """List available elements.data configs and auto-detect the right one."""
+    import sys as _sys
+    _sys.path.insert(0, str(_TOOL.parent))
+    from generate_items import list_configs, detect_config as _detect
+
+    configs = list_configs()
+
+    server_el = f"{settings.server_path.rstrip('/')}/gamed/config/elements.data"
+    el_path = server_el if Path(server_el).exists() else (
+        str(_UPLOADED_EL) if _UPLOADED_EL.exists() else None
+    )
+    detected = _detect(el_path) if el_path else None
+
+    return {"configs": configs, "detected": detected}
+
+
+class RegenerateBody(BaseModel):
+    config: str = ""
+
+
 @router.post("/regenerate-items")
-async def regenerate_items(user: dict = Depends(require_admin)):
+async def regenerate_items(body: RegenerateBody = RegenerateBody(), user: dict = Depends(require_admin)):
     """Regenerate pw_items.json from elements.data (server path or uploaded file)."""
     # Prefer server's own file, fall back to uploaded
     server_el = f"{settings.server_path.rstrip('/')}/gamed/config/elements.data"
@@ -274,9 +296,11 @@ async def regenerate_items(user: dict = Depends(require_admin)):
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         shutil.copy2(_ITEMS_JSON, _BACKUP_DIR / f"pw_items_{ts}.json.bak")
 
+    cfg_name = body.config.strip() if body.config else ""
+
     loop = asyncio.get_event_loop()
     try:
-        result = await loop.run_in_executor(None, _run_generate, elements_path)
+        result = await loop.run_in_executor(None, _run_generate, elements_path, cfg_name)
     except Exception as e:
         raise HTTPException(500, detail=str(e))
 
@@ -284,13 +308,13 @@ async def regenerate_items(user: dict = Depends(require_admin)):
     return result
 
 
-def _run_generate(elements_path: str) -> dict:
+def _run_generate(elements_path: str, cfg_name: str = "") -> dict:
     import subprocess
-    proc = subprocess.run(
-        [sys.executable, str(_TOOL), "--source", "elements",
-         "--elements", elements_path, "--no-backup"],
-        capture_output=True, text=True, timeout=120,
-    )
+    cmd = [sys.executable, str(_TOOL), "--source", "elements",
+           "--elements", elements_path, "--no-backup"]
+    if cfg_name:
+        cmd += ["--config", cfg_name]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr or "generator failed")
     data = json.loads(_ITEMS_JSON.read_text(encoding="utf-8"))

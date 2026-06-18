@@ -2,8 +2,8 @@
 
 Regenerates `data/pw_items.json` (the item name database used by Item Builder and G-Shop) from one of two sources:
 
-- **elements.data** — your game server's binary item database (most up-to-date)
-- **pw_items.php** — a PHP item list file (alternative, useful if you don't have elements.data)
+- **elements.data** — your game server's binary item database (recommended, correct categories)
+- **pw_items.php** — a PHP item list file (fallback)
 
 Before overwriting, the current `pw_items.json` is always backed up to `data/backups/pw_items_YYYYMMDD_HHMMSS.json.bak`.
 
@@ -41,20 +41,6 @@ python3 tools/generate_items.py --source php --php /path/to/pw_items.php
 
 ---
 
-## How it works
-
-### elements.data mode
-
-`elements.data` is a binary database that contains all game objects — items, NPCs, mobs, skills, maps, and more. The tool scans it for item records by looking for valid item IDs (4000–40000) followed by a UTF-16LE item name 12 bytes later.
-
-Items with star quality prefixes (☆/★/✦) that are not already in the existing `pw_items.json` are appended to type 8 / subtype 99 ("Other — new"). All existing items have their names refreshed from the binary.
-
-### php mode
-
-Parses `$ItemMod[type][sub][] = "name#id#grade#color#addon";` assignments and converts them directly to JSON.
-
----
-
 ## Admin panel (no SSH needed)
 
 The **Server** page in the admin panel has an **Item Database** section where you can:
@@ -66,6 +52,38 @@ The **Server** page in the admin panel has an **Item Database** section where yo
 
 ---
 
+## How it works
+
+### elements.data mode
+
+`elements.data` is a v27 binary database containing all game objects. The tool uses `PW_1.4.2_v27.cfg` to walk all 129 tables sequentially, reading exact record sizes for each table. For every item essence table (WEAPON_ESSENCE, ARMOR_ESSENCE, DECORATION_ESSENCE, FASHION_ESSENCE, etc.) it extracts the item ID and name, then assigns the correct type/subtype based on which table the item came from:
+
+| Table | Type | Sub-type |
+|---|---|---|
+| WEAPON_ESSENCE | 1 (Weapon) | by weapon sub-type |
+| ARMOR_ESSENCE | 2 (Armor) | by armor sub-type |
+| DECORATION_ESSENCE | 3 (Jewelry) | by decoration sub-type |
+| FLYSWORD_ESSENCE | 4 (Flyer/Pet) | 1 (flying swords) |
+| WINGMANWING_ESSENCE | 4 (Flyer/Pet) | 2 (wings) |
+| PET_ESSENCE | 4 (Flyer/Pet) | 3 (pets) |
+| PET_EGG_ESSENCE | 4 (Flyer/Pet) | 4 (pet eggs) |
+| DAMAGERUNE_ESSENCE | 5 (Elf) | 1 |
+| ARMORRUNE_ESSENCE | 5 (Elf) | 2 |
+| FASHION_ESSENCE | 6 (Fashion) | by fashion sub-type |
+| MEDICINE_ESSENCE | 7 (Misc) | 1 |
+| MATERIAL_ESSENCE | 7 (Misc) | 2 |
+| SKILLTOME_ESSENCE | 7 (Misc) | 3 |
+| STONE_ESSENCE | 7 (Misc) | 6 |
+| everything else | 7 (Misc) | varies |
+
+Items not belonging to any of these tables are excluded. This ensures no "Wrong Item" errors from items that exist in other server versions but not in this one.
+
+### php mode
+
+Parses `$ItemMod[type][sub][] = "name#id#grade#color#addon";` assignments and converts them directly to JSON.
+
+---
+
 ## Output format
 
 ```json
@@ -74,8 +92,8 @@ The **Server** page in the admin panel has an **Item Database** section where yo
     "1": ["☆☆☆Iron Sword#4567#1#2#0", "☆Blade of Dawn#4999#3#1#0"],
     "2": ["..."]
   },
-  "8": {
-    "99": ["☆☆New Item#19500#0#0#0"]
+  "6": {
+    "2": ["Fairy Dress#19200#0#0#0", "Summer Chipao#19210#0#0#0"]
   }
 }
 ```
