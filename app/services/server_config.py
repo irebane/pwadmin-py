@@ -17,11 +17,13 @@ async def read_conf(path: Path) -> str:
 
 
 async def write_conf_atomic(path: Path, content: str, encoding: str = "utf-8") -> None:
-    """Write via temp file + atomic rename."""
-    tmp = str(path) + ".tmp"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    Path(tmp).write_text(content, encoding=encoding)
-    os.replace(tmp, str(path))
+    """Write via temp+rename; falls back to direct write if directory isn't writable."""
+    if os.access(path.parent, os.W_OK):
+        tmp = str(path) + ".tmp"
+        Path(tmp).write_text(content, encoding=encoding)
+        os.replace(tmp, str(path))
+    else:
+        path.write_text(content, encoding=encoding)
 
 
 def parse_conf_key(content: str, key: str) -> str | None:
@@ -292,7 +294,7 @@ async def _rebuild_gmserver_conf(glinkd_count: int, path_str: str) -> None:
 
 async def _rebuild_start_sh(glinkd_count: int) -> None:
     path = Path("/home/start.sh")
-    if not path.exists() or not os.access(path, os.W_OK) or not os.access(path.parent, os.W_OK):
+    if not path.exists():
         return
     lines = path.read_text().splitlines(keepends=True)
     new_lines = []
