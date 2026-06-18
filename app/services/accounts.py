@@ -61,26 +61,7 @@ async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool 
         gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.creatime), "pending": 1}
         idx += 1
 
-    # characters — gamedbd uses users.ID directly as the game account ID
-    classes = settings.pw_classes_dict
-    chars = {}
-    import asyncio
-    from app.pw_socket import get_user_roles, get_role_base
-    loop = asyncio.get_event_loop()
-    role_list = await loop.run_in_executor(None, get_user_roles, user_id)
-    for i, role in enumerate(role_list):
-        base = await loop.run_in_executor(None, get_role_base, role["role_id"], classes)
-        chars[i] = {
-            "roleid": role["role_id"],
-            "rolename": role["role_name"],
-            "roleclass": base["role_class"] if base else "",
-            "rolepath": base["role_path"] if base else "",
-            "rolelevel": base["role_level"] if base else 0,
-            "posX": base["pos_x"] if base else 0,
-            "posY": base["pos_y"] if base else 0,
-            "posZ": base["pos_z"] if base else 0,
-            "map": base["map"] if base else 0,
-        }
+    chars = {}  # populated asynchronously by /api/accounts/chars
 
     if user.birthday:
         try:
@@ -111,6 +92,29 @@ async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool 
     }
 
     return [{"error": ""}, user_data, session_data, gold_log, chars]
+
+
+async def load_chars_v2(user_id: int) -> dict:
+    import asyncio
+    from app.pw_socket import get_user_roles, get_role_base
+    classes = settings.pw_classes_dict
+    loop = asyncio.get_running_loop()
+    role_list = await loop.run_in_executor(None, get_user_roles, user_id)
+    chars = {}
+    for i, role in enumerate(role_list):
+        base = await loop.run_in_executor(None, get_role_base, role["role_id"], classes)
+        chars[i] = {
+            "roleid": role["role_id"],
+            "rolename": role["role_name"],
+            "roleclass": base["role_class"] if base else "",
+            "rolepath": base["role_path"] if base else "",
+            "rolelevel": base["role_level"] if base else 0,
+            "posX": base["pos_x"] if base else 0,
+            "posY": base["pos_y"] if base else 0,
+            "posZ": base["pos_z"] if base else 0,
+            "map": base["map"] if base else 0,
+        }
+    return chars
 
 
 async def list_accounts_v2(db: AsyncSession, sname: str, stype: int) -> list:

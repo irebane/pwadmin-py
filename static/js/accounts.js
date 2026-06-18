@@ -405,63 +405,70 @@ function EditUserData(userData){
 			cell.colSpan = '3';
 			cell.textContent='No transaction history.';
 		}
-		table = document.getElementById('CharList');
-		table.innerHTML = '';
-		var charc=Object.keys(userD[4]).length;
-		document.getElementById('AccInfoCI').innerHTML=charc;
-		if (charc>0){
-			if (usrank>0){
-				var hrow = table.insertRow(-1);
-				['Name [ID]','Class (Lvl)','Coordinates'].forEach(function(h){
-					var th = document.createElement('th'); th.textContent = h; hrow.appendChild(th);
-				});
-			} else {
-				var hrow = table.insertRow(-1);
-				['Name','Class (Lvl)'].forEach(function(h){
-					var th = document.createElement('th'); th.textContent = h; hrow.appendChild(th);
-				});
-			}
-			for (var i=0; i<charc; i++){
-				var role = userD[4][i];
-
-				if (usrank>0){
-					role.posX = ~~role.posX;
-					role.posY = ~~role.posY;
-					role.posZ = ~~role.posZ;
-
-					if (role.map == 1) {
-						role.x = ~~(400 + role.posX / 10)
-						role.y = ~~(role.posY / 10)
-						role.z = ~~(550 + role.posZ / 10)
-					}
-					const roleData = JSON.stringify(role, null, 4);
-					row = table.insertRow(-1);
-					cell = row.insertCell(0);
-					const anchor = document.createElement('a');
-					anchor.href='#';
-					anchor.innerHTML = `<b>${role["rolename"]}</b> [${role["roleid"]}]`;
-					cell.appendChild(anchor);
-					anchor.onclick = () => alert(roleData);
-					cell = row.insertCell(1);
-					cell.innerHTML = `${role["rolepath"]} ${role["roleclass"]} (${role["rolelevel"]})`;
-					cell = row.insertCell(2);
-					cell.innerHTML = `x: ${role["posX"]} y: ${role["posY"]} z: ${role["posZ"]} [${role["map"]}]`;
-				}else{
-					row = table.insertRow(-1);
-					cell = row.insertCell(0);
-					cell.innerHTML="<b>"+role["rolename"]+"</b>";
-					cell = row.insertCell(1);
-					cell.innerHTML=role["rolepath"]+role["roleclass"]+" ("+role["rolelevel"]+")";
-				}
-			}
-		}else{
-			row = table.insertRow(-1);
-			cell = row.insertCell(0);
-			cell.style.textAlign='center';
-			cell.colSpan = '3';
-			cell.innerHTML='<i>... You have no character ...</i>';
-		}
+		document.getElementById('CharList').innerHTML='<tr><td style="color:#64748b;font-style:italic;padding:6px 0;" colspan="3">Loading characters…</td></tr>';
+		document.getElementById('AccInfoCI').innerHTML='…';
+		(function(loadUid, loadSrank){
+			var csrf=document.cookie.match(/csrf_token=([^;]+)/);
+			csrf=csrf?csrf[1]:'';
+			fetch('/api/accounts/chars',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({id:loadUid})})
+			.then(function(r){return r.json();})
+			.then(function(chars){RenderChars(chars,loadSrank);})
+			.catch(function(){
+				document.getElementById('CharList').innerHTML='<tr><td style="color:#ef4444;font-style:italic;" colspan="3">Failed to load characters.</td></tr>';
+				document.getElementById('AccInfoCI').innerHTML='?';
+			});
+		})(uid, usrank);
 CheckExchCost();
+	}
+}
+
+function RenderChars(chars, usrank){
+	var table = document.getElementById('CharList');
+	if (!table) return;
+	table.innerHTML = '';
+	var charc = Object.keys(chars).length;
+	document.getElementById('AccInfoCI').innerHTML = charc;
+	if (charc > 0){
+		var headers = usrank > 0 ? ['Name [ID]','Class (Lvl)','Coordinates'] : ['Name','Class (Lvl)'];
+		var hrow = table.insertRow(-1);
+		headers.forEach(function(h){
+			var th = document.createElement('th'); th.textContent = h; hrow.appendChild(th);
+		});
+		for (var i = 0; i < charc; i++){
+			var role = chars[i];
+			var row = table.insertRow(-1);
+			var cell;
+			if (usrank > 0){
+				role.posX = ~~role.posX; role.posY = ~~role.posY; role.posZ = ~~role.posZ;
+				if (role.map == 1){
+					role.x = ~~(400 + role.posX / 10);
+					role.y = ~~(role.posY / 10);
+					role.z = ~~(550 + role.posZ / 10);
+				}
+				var roleData = JSON.stringify(role, null, 4);
+				cell = row.insertCell(0);
+				var anchor = document.createElement('a');
+				anchor.href = '#';
+				anchor.innerHTML = '<b>'+role.rolename+'</b> ['+role.roleid+']';
+				anchor.onclick = (function(d){return function(){alert(d);};})(roleData);
+				cell.appendChild(anchor);
+				cell = row.insertCell(1);
+				cell.innerHTML = role.rolepath+' '+role.roleclass+' ('+role.rolelevel+')';
+				cell = row.insertCell(2);
+				cell.innerHTML = 'x: '+role.posX+' y: '+role.posY+' z: '+role.posZ+' ['+role.map+']';
+			} else {
+				cell = row.insertCell(0);
+				cell.innerHTML = '<b>'+role.rolename+'</b>';
+				cell = row.insertCell(1);
+				cell.innerHTML = role.rolepath+' '+role.roleclass+' ('+role.rolelevel+')';
+			}
+		}
+	} else {
+		var row = table.insertRow(-1);
+		var cell = row.insertCell(0);
+		cell.style.textAlign = 'center';
+		cell.colSpan = '3';
+		cell.innerHTML = '<i>... You have no character ...</i>';
 	}
 }
 

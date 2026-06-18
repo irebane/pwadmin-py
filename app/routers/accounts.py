@@ -5,7 +5,7 @@ from app.deps import get_db, get_current_user, require_admin
 from app.services.accounts import (
     list_accounts, load_account, save_account,
     add_gold, set_gm_rank, delete_account,
-    load_account_v2, list_accounts_v2, account_tool_v2, account_save_v2,
+    load_account_v2, load_chars_v2, list_accounts_v2, account_tool_v2, account_save_v2,
 )
 from pydantic import BaseModel
 
@@ -29,6 +29,17 @@ async def account_load(
         return JSONResponse([{"error": "Unauthorized."}])
     result = await load_account_v2(db, body.id, viewer_is_admin=user.get("is_admin", False))
     return JSONResponse(result)
+
+
+@router.post("/chars")
+async def account_chars(
+    body: LoadBody,
+    user: dict = Depends(get_current_user),
+):
+    if not user.get("is_admin") and user.get("id") != body.id:
+        return JSONResponse({"error": "Unauthorized."})
+    chars = await load_chars_v2(body.id)
+    return JSONResponse(chars)
 
 
 class ListBody(BaseModel):
