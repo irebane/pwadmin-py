@@ -198,6 +198,7 @@ async def save_game_config(data: dict) -> str:
         glinkd_count = max(1, int(data.get("glinkd_count", 1)))
         await _rebuild_gamesys_conf(glinkd_count)
         await _rebuild_gmserver_conf(glinkd_count, str(_server_file_path(7, "gmserver.conf")))
+        await _rebuild_gmserver_conf(glinkd_count, str(_server_file_path(9, "gmserver.conf")))
         await _rebuild_start_sh(glinkd_count)
     except Exception as e:
         errors.append(f"glinkd conf rebuild: {e}")
