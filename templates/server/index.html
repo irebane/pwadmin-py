@@ -286,6 +286,26 @@
   </div>
 </div>
 
+  <!-- SERVER CONTROL OVERLAY ─────────────────────────────────── -->
+  <div x-show="controlling" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+    <div class="bg-slate-900 border border-slate-700 rounded-xl p-8 w-full max-w-xs text-center shadow-2xl">
+      <!-- Spinner -->
+      <div class="flex justify-center mb-5">
+        <svg class="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+      </div>
+      <!-- Animated progress bar -->
+      <div class="w-full bg-slate-800 rounded-full h-1.5 mb-4 overflow-hidden">
+        <div class="h-1.5 rounded-full bg-blue-500 animate-pulse" style="width:100%"></div>
+      </div>
+      <p class="text-sm text-slate-300 font-medium" x-text="controlMsg"></p>
+      <p class="text-xs text-slate-600 mt-1.5">This may take up to 90 seconds</p>
+    </div>
+  </div>
+
 </div><!-- end x-data -->
 {% endblock %}
 
@@ -296,6 +316,7 @@ function serverPage() {
     /* status */
     memTotal: 0, memUsed: 0, memFree: 0,
     services: [], glinkd: [], glinkdOpen: false,
+    controlling: false, controlMsg: '',
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
 
     /* config */
@@ -383,6 +404,9 @@ function serverPage() {
 
     async serverAction(action) {
       if (!confirm('Server ' + action + '?')) return;
+      const label = {stop: 'Stopping', start: 'Starting', restart: 'Restarting'}[action] || action;
+      this.controlling = true;
+      this.controlMsg = label + ' server…';
       try {
         const r = await fetch('/api/server/control', {
           method: 'POST',
@@ -390,9 +414,17 @@ function serverPage() {
           body: JSON.stringify({action}),
         });
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) { alert('Error: ' + (d.detail || action + ' failed')); return; }
-        setTimeout(() => this.refreshStatus(), 1500);
+        if (!r.ok) { this.controlling = false; alert('Error: ' + (d.detail || action + ' failed')); return; }
+        // Poll until status stabilises (up to 90s)
+        const wantRunning = action !== 'stop';
+        const deadline = Date.now() + 90000;
+        while (Date.now() < deadline) {
+          await new Promise(res => setTimeout(res, 3000));
+          await this.refreshStatus();
+          if (this.anyRunning === wantRunning) break;
+        }
       } catch(e) { alert('Network error'); }
+      this.controlling = false;
     },
   };
 }

@@ -56,14 +56,13 @@ async def server_control(body: ControlBody, user: dict = Depends(require_admin))
     if body.action not in ("start", "stop", "restart"):
         raise HTTPException(400, detail="Invalid action")
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "sudo", "systemctl", body.action, "pwserver",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        # Fire and forget — systemctl can take 30-60s for a full server restart.
+        # Frontend polls /api/server/status to detect completion.
+        await asyncio.create_subprocess_exec(
+            "sudo", "/usr/bin/systemctl", body.action, "pwserver",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
         )
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
-        if proc.returncode != 0:
-            raise HTTPException(500, detail=stderr.decode().strip() or f"systemctl {body.action} failed")
         return {"success": True}
-    except asyncio.TimeoutError:
-        raise HTTPException(504, detail="systemctl timed out")
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
