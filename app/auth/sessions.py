@@ -2,7 +2,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from fastapi import Request, Response
 from app.config import settings
 
-SESSION_MAX_AGE = 8 * 3600
+SESSION_MAX_AGE = 30 * 24 * 3600  # 30 days
 COOKIE_NAME = "pwa_session"
 
 _signer = URLSafeTimedSerializer(settings.secret_key, salt="session")
