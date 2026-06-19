@@ -510,14 +510,14 @@ def from_elements(elements_path: str, _existing: dict | None = None,
         # Grade: gear types (1/2/3) need grade≥1 so getPItemData's selectedIndex = grade-1 ≥ 0
         grade = "1" if pw_type in _GEAR_TYPES else "0"
 
-        for item_id, item_name in entries:
+        seen_names: set[str] = set()
+        for item_id, item_name in sorted(entries):  # sort by ID to keep the original (lowest ID)
             if item_id in seen_ids:
                 continue
+            if item_name in seen_names:
+                continue  # same name already added from a lower ID
             seen_ids.add(item_id)
-            # Format: name#id#grade#color#addon#extra
-            # addon "1 0 0 0" = amount/stack=1, proc=0, octetType=0, octetData=0
-            # extra "-" = non-numeric so isNumber() returns false for Tome (sct=1)
-            #   desc branch, preventing TomeStat[NaN] crash in getPItemData
+            seen_names.add(item_name)
             bucket.append(f"{item_name}#{item_id}#{grade}#0#1 0 0 0#-")
 
     total = sum(len(v) for subs in result.values() for v in subs.values())
