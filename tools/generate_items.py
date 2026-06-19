@@ -90,54 +90,58 @@ _TABLE_MAP = {
     # type 3 – Jewelry (IBMENU_SC[3]: PhysNeck…MagicRing)
     "010 - DECORATION_ESSENCE":  (3, "id_sub_type"),
 
-    # type 4 – Other Octet (IBMENU_SC[4]: Flyer, PetEgg, BlessBox, Elf, Hiero…)
-    "023 - FLYSWORD_ESSENCE":    (4, 1),   # Flyer
-    "024 - WINGMANWING_ESSENCE": (4, 1),   # Flyer (elf wings)
-    "095 - PET_ESSENCE":         (4, 2),   # Pet Egg
-    "096 - PET_EGG_ESSENCE":     (4, 2),   # Pet Egg
-    "120 - GOBLIN_ESSENCE":      (4, 2),   # Pet Egg
-    "122 - GOBLIN_EQUIP_ESSENCE":(4, 2),   # Pet Egg
-    "100 - WAR_TANKCALLIN_ESSENCE":(4, 1), # Flyer (tank mount)
+    # type 4 – Other Octet (IBMENU_SC[4]: Flyer, PetEgg, BlessBox, Elf, Hiero,
+    #                        Ammo, Potion, TaskDice, PetFood, SoulStones, Order, StarChart)
+    "023 - FLYSWORD_ESSENCE":      (4, 1),   # Flyer
+    "024 - WINGMANWING_ESSENCE":   (4, 1),   # Flyer (elf wings)
+    "100 - WAR_TANKCALLIN_ESSENCE":(4, 1),   # Flyer (tank mount)
+    "095 - PET_ESSENCE":           (4, 2),   # Pet Egg
+    "096 - PET_EGG_ESSENCE":       (4, 2),   # Pet Egg
+    "120 - GOBLIN_ESSENCE":        (4, 2),   # Pet Egg
+    "122 - GOBLIN_EQUIP_ESSENCE":  (4, 2),   # Pet Egg
+    "032 - PROJECTILE_ESSENCE":    (4, 6),   # Ammo (arrows)
+    "034 - QUIVER_ESSENCE":        (4, 6),   # Ammo (quivers)
+    "075 - TASKDICE_ESSENCE":      (4, 8),   # Task Dice
+    "097 - PET_FOOD_ESSENCE":      (4, 9),   # Pet Food
+    "036 - STONE_ESSENCE":         (4, 10),  # Soul Stones (Jargoon, Garnet…)
 
-    # type 5 – Utility (IBMENU_SC[5]: Tome, Boost, Util, Chat, Pages, Dye…)
-    "022 - SKILLTOME_ESSENCE":   (5, 1),   # Tome
-    "107 - SKILLMATTER_ESSENCE": (5, 1),   # Tome
-    "013 - MEDICINE_ESSENCE":    (5, 2),   # Boost (HP/MP/buff potions)
-    "115 - AUTOHP_ESSENCE":      (5, 2),   # Boost
-    "116 - AUTOMP_ESSENCE":      (5, 2),   # Boost
-    "117 - DOUBLE_EXP_ESSENCE":  (5, 2),   # Boost
-    "123 - GOBLIN_EXPPILL_ESSENCE":(5, 2), # Boost
-    "090 - FACEPILL_ESSENCE":    (5, 2),   # Boost
-    "025 - TOWNSCROLL_ESSENCE":  (5, 3),   # Util
-    "026 - UNIONSCROLL_ESSENCE": (5, 3),   # Util
-    "027 - REVIVESCROLL_ESSENCE":(5, 3),   # Util
-    "028 - ELEMENT_ESSENCE":     (5, 3),   # Util
-    "118 - TRANSMITSCROLL_ESSENCE":(5, 3), # Util
-    "087 - FACETICKET_ESSENCE":  (5, 3),   # Util (makeover scrolls)
-    "108 - REFINE_TICKET_ESSENCE":(5, 3),  # Util
-    "109 - DESTROYING_ESSENCE":  (5, 3),   # Util
-    "113 - BIBLE_ESSENCE":       (5, 3),   # Util
-    "124 - SELL_CERTIFICATE_ESSENCE":(5, 3), # Util
-    "125 - TARGET_ITEM_ESSENCE": (5, 3),   # Util
-    "126 - LOOK_INFO_ESSENCE":   (5, 3),   # Util
-    "114 - SPEAKER_ESSENCE":     (5, 4),   # Chat
-    "099 - FIREWORKS_ESSENCE":   (5, 7),   # Firework
-    "119 - DYE_TICKET_ESSENCE":  (5, 6),   # Dye
-    "097 - PET_FOOD_ESSENCE":    (5, 10),  # Pet Scroll
-    "098 - PET_FACETICKET_ESSENCE":(5, 3), # Util
-    "018 - DAMAGERUNE_ESSENCE":  (5, 3),   # Util (elf runes)
-    "020 - ARMORRUNE_ESSENCE":   (5, 3),   # Util (elf runes)
+    # type 5 – Utility (IBMENU_SC[5]: Tome, Boost, Util, Chat, Pages, Dye,
+    #                   Firework, DragonQuest, PackReward, PetScroll, Funny, Fuel,
+    #                   Wine/Blood, ElfGear, Runes, MarkOfMight)
+    "022 - SKILLTOME_ESSENCE":        (5, 1),   # Tome
+    "107 - SKILLMATTER_ESSENCE":      (5, 1),   # Tome
+    "013 - MEDICINE_ESSENCE":         (5, 2),   # Boost (HP/MP potions, food)
+    "115 - AUTOHP_ESSENCE":           (5, 2),   # Boost
+    "116 - AUTOMP_ESSENCE":           (5, 2),   # Boost
+    "117 - DOUBLE_EXP_ESSENCE":       (5, 2),   # Boost
+    "123 - GOBLIN_EXPPILL_ESSENCE":   (5, 2),   # Boost
+    "025 - TOWNSCROLL_ESSENCE":       (5, 3),   # Util
+    "026 - UNIONSCROLL_ESSENCE":      (5, 3),   # Util
+    "027 - REVIVESCROLL_ESSENCE":     (5, 3),   # Util
+    "118 - TRANSMITSCROLL_ESSENCE":   (5, 3),   # Util
+    "087 - FACETICKET_ESSENCE":       (5, 3),   # Util (makeover scrolls)
+    "108 - REFINE_TICKET_ESSENCE":    (5, 3),   # Util
+    "109 - DESTROYING_ESSENCE":       (5, 3),   # Util
+    "113 - BIBLE_ESSENCE":            (5, 3),   # Util
+    "124 - SELL_CERTIFICATE_ESSENCE": (5, 3),   # Util
+    "125 - TARGET_ITEM_ESSENCE":      (5, 3),   # Util
+    "126 - LOOK_INFO_ESSENCE":        (5, 3),   # Util
+    "114 - SPEAKER_ESSENCE":          (5, 4),   # Chat
+    "119 - DYE_TICKET_ESSENCE":       (5, 6),   # Dye
+    "099 - FIREWORKS_ESSENCE":        (5, 7),   # Firework
+    "098 - PET_FACETICKET_ESSENCE":   (5, 10),  # Pet Scroll
+    "090 - FACEPILL_ESSENCE":         (5, 11),  # Funny (face change pills)
+    "028 - ELEMENT_ESSENCE":          (5, 12),  # Fuel (Yiyuan Stone)
+    "018 - DAMAGERUNE_ESSENCE":       (5, 14),  # Elf Gear
+    "020 - ARMORRUNE_ESSENCE":        (5, 15),  # Runes
 
     # type 6 – Mats & Herbs (IBMENU_SC[6]: NormalMats, Jade, Herbs)
-    "016 - MATERIAL_ESSENCE":    (6, 1),   # Normal Mats
+    # MATERIAL_ESSENCE sub-type determines output bucket (MAT_SUB sentinel)
+    "016 - MATERIAL_ESSENCE":    (6, "MAT_SUB"),
     "029 - TASKMATTER_ESSENCE":  (6, 1),   # Normal Mats
     "030 - TOSSMATTER_ESSENCE":  (6, 1),   # Normal Mats
-    "032 - PROJECTILE_ESSENCE":  (6, 1),   # Normal Mats
-    "034 - QUIVER_ESSENCE":      (6, 1),   # Normal Mats
-    "036 - STONE_ESSENCE":       (6, 2),   # Jade (craft stones)
 
     # type 7 – Fashion  (IBMENU_SC[7]: Top[M], Top[F], Pants[M], Skirt[F]…)
-    # Sub is derived from (id_sub_type, gender) — sentinel triggers special handling
     "084 - FASHION_ESSENCE":     (7, "FASHION_GENDER"),
 }
 
@@ -218,6 +222,12 @@ _SUB_REMAPS: dict[int, dict[int, int]] = {
     2: _ARMOR_SUB_REMAP,
     3: _DECORATION_SUB_REMAP,
 }
+
+# MATERIAL_ESSENCE sub-type IDs that map to Jade (sub 2) or Herbs (sub 3) in type 6.
+# All other sub-types land in Normal Mats (sub 1), except 20044 (Pages → type 5 sub 5).
+_JADE_MATERIAL_SUBS  = {762, 764, 765, 766, 767, 768, 769, 770}
+_HERB_MATERIAL_SUBS  = {1819, 1822, 1829, 1833, 1836, 1843, 1847, 1849, 1853, 1856}
+_PAGE_MATERIAL_SUB   = 20044
 
 # Item types that use grade field (cats 1/2/3 in getPItemData do selectedIndex = grade-1)
 _GEAR_TYPES = {1, 2, 3}
@@ -328,14 +338,13 @@ def _read_field(data: bytes, pos: int, ftype: str) -> tuple[object, int]:
 
 
 _NA_PREFIX = re.compile(r'^N/A\s*')
-# Matches any character outside printable ASCII (excludes CJK, Cyrillic, etc.)
-_NON_ASCII = re.compile(r'[^\x20-\x7E]')
+# Block CJK/Hangul/Kana but allow non-ASCII symbols like ☆ ★ ✦
+_CJK = re.compile(r'[　-ヿ㐀-䶿一-鿿가-힯豈-﫿]')
 
 
 def _read_name(raw: str) -> str:
     name = _NA_PREFIX.sub('', raw).strip()
-    # Skip non-English / debug items (names containing CJK or other non-ASCII)
-    if _NON_ASCII.search(name):
+    if _CJK.search(name):
         return ''
     return name
 
@@ -467,6 +476,16 @@ def from_elements(elements_path: str, _existing: dict | None = None,
                     pw_sub = _FASHION_SUB_REMAP.get((raw_sub, raw_gender), 0)
                     if pw_sub == 0:
                         continue  # unknown fashion sub — skip
+                elif sub_spec == "MAT_SUB":
+                    raw_sub = record.get("id_sub_type", 0) or 0
+                    if raw_sub in _JADE_MATERIAL_SUBS:
+                        pw_sub = 2   # Jade
+                    elif raw_sub in _HERB_MATERIAL_SUBS:
+                        pw_sub = 3   # Herbs
+                    elif raw_sub == _PAGE_MATERIAL_SUB:
+                        pw_type, pw_sub = 5, 5  # Pages → type 5
+                    else:
+                        pw_sub = 1   # Normal Mats
                 elif isinstance(sub_spec, str):
                     raw_sub = record.get(sub_spec, 0) or 0
                     remap = _SUB_REMAPS.get(pw_type)
