@@ -13,14 +13,11 @@ class User(Base):
     gender = Column(Integer, default=0)
     birthday = Column(DateTime)
     creatime = Column(DateTime)
-    WebPoint = Column(Integer, default=0)
-    VotePoint = Column(Integer, default=0)
     passwd2 = Column(String(64))
     Prompt = Column(String(32), default="")
     answer = Column(String(32), default="")
     mobilenumber = Column(String(32))
     qq = Column(String(32))
-    mudev = Column(Integer, default=0)
 
 
 class Point(Base):

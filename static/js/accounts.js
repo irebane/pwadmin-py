@@ -1,38 +1,6 @@
-var VTIndex=0;
-var VTimers = [];
-var VTimerSpan = [];  
-var VTimerFunc;
-var VInterval;
-var Vhour = [];
-var Vmin = [];
-var Vsec = [];
-var VId = [];
 var ExchRate = 0;
-var ExchPoint = 0;
 var ExchMaxG = 0;
 
-function StartGlobalTimer(){
-    var VTimerFunc = setInterval(function () {
-		for (i = 0; i < VTIndex; i++) { 
-			if (VTimers[i] > 0){
-				Vhour[i] = parseInt(VTimers[i] / 3600, 10);
-				Vmin[i] = parseInt((VTimers[i] - Vhour[i] * 3600) / 60, 10);
-				Vsec[i] = parseInt(VTimers[i] % 60, 10);
-
-				Vhour[i] = Vhour[i] < 10 ? "0" + Vhour[i] : Vhour[i];
-				Vmin[i] = Vmin[i] < 10 ? "0" + Vmin[i] : Vmin[i];
-				Vsec[i] = Vsec[i] < 10 ? "0" + Vsec[i] : Vsec[i];
-				VTimerSpan[i].innerHTML = Vhour[i] + ":" + Vmin[i] + ":" + Vsec[i];
-				VTimers[i]--;
-			}else{
-				if (VTimers[i] == 0){
-					VTimers[i] = -1;
-					FinishedVoteTimer(VId[i]);
-				}
-			}
-		}
-    }, 1000);	
-}
 
 function stringToDate(s) {
   var dateParts = s.split(' ')[0].split('-'); 
@@ -51,52 +19,7 @@ function stringToGMTDate(s) {
   return d;
 }
 
-function SetVotTimers(dstack){
-	if (!dstack) { return; }
-	var dstck=dstack.split(",");
-	var dv;
-	var maxVOpt=7;
-	var stcki=dstck.length;
-	var si=0;
-	var cDate = new Date();
-	var diff;
-    var cDat = cDate.getFullYear()+'-'+("00"+(cDate.getMonth()+1)).slice(-2)+'-'+("00" + cDate.getDate()).slice(-2)+' '+("00" + cDate.getHours()).slice(-2)+':'+("00" + cDate.getMinutes()).slice(-2)+':'+("00" + cDate.getSeconds()).slice(-2);
-	for(var i=1;i <= maxVOpt; i++){
-		dv=document.getElementById('VoteRow'+i);
-		if (dv != null){
-			if (dstck[si] != null){
-				if (dstck[si].length<10){diff=0;}else{
-					diff=(VInterval*3600) - parseInt((stringToDate(cDat)-stringToGMTDate(dstck[si]))/1000,10);
-				}
-			}else{
-				diff=0;
-			}
-			NewVoteTimer(diff, i);
-			si++;
-			if (si >= dstck.length){si=0;}
-		}
-	}
-}
 
-function FinishedVoteTimer(voteid){
-	var div1 = document.getElementById(('VoteTimer'+voteid));
-	if (div1) {
-		div1.innerHTML = "<a href='javascript:void(0);' onClick='SendVoteData("+voteid+");' title='Vote to site, make our server mor popular so we can get more plyer!'><button> Vote </button></a>"	
-	} else {
-		console.error(`Missing the VoteTimer${voteid} from the dom`);
-	}
-}
-
-function NewVoteTimer (duration, voteid){
-	if (duration > 0){
-		VTimers[VTIndex] = duration;
-		VId[VTIndex] = voteid;
-		VTimerSpan[VTIndex] = document.getElementById(('VoteTimer'+voteid));
-		VTIndex++;
-	}else{
-		FinishedVoteTimer(voteid);
-	}
-}
 
 function SwitchDisplayDataDiv(index){
 	var list = ["ChngInfoDiv", "AccInfoDiv", "WebshopLogDiv"];
@@ -295,18 +218,9 @@ function EditUserData(userData){
 			var ugnd=userD[1]["gender"];
 			var userRegIp=userD[1]["regIp"];
 			var userLoginIp=userD[1]["loginIp"];
-			var ExchPoint=userD[1]["votepoint"];
-			var uvd=userD[1]["votedate"];
-			SetVotTimers(uvd);
 			var urn_ext=uname;
-			ExchRate=parseInt(userD[1]["pointtogold"]);
 			if ((urank>0)||(usrank>0)){
 				urn_ext=urn_ext+" ["+uid+"]";
-			}
-			if (ExchPoint<ExchRate){
-				document.getElementById('PExchLink').style.display='none';  
-			}else{
-				document.getElementById('PExchLink').style.display='inline-block';  
 			}
 			document.getElementById('AccInfoBanRow').style.display='none';  
 			document.getElementById('AccInfoZone').style.display='none';  
@@ -323,9 +237,6 @@ function EditUserData(userData){
 			document.getElementById('AccInfoRD').innerHTML=uct;
 			document.getElementById('AccInfoRegIp').innerHTML=userRegIp;
 			document.getElementById('AccInfoLoginIp').innerHTML=userLoginIp;
-			var accWP=document.getElementById('AccInfoWP');
-			if(accWP) accWP.innerHTML=ExchPoint;
-			ExchMaxG=parseInt(ExchPoint/ExchRate,10);
 			document.getElementById('CurUnam').value=uname;
 			document.getElementById('CurUId').value=uid;
 			document.getElementById('OldUnam').value=uname;
@@ -566,35 +477,6 @@ function ChangeUserDataHandler(userData){
 	}	
 }
 
-function PointExchangeHandler(userData){
-	var userD=JSON.parse(userData);
-	var cId=parseInt(document.getElementById('CurUId').value,10)||0;
-	if (userD[0]["error"]!=""){
-		alert(userD[0]["error"]);
-	}else{
-		if (userD[0]["success"]!=""){
-			alert(userD[0]["success"]);
-		}
-		if (userD[0]["reloaduserdata"]=="1"){
-			SendDataWithAjax(1, [cId]);
-		}
-	}	
-}
-
-function VoteHandler(userData){
-	var userD=JSON.parse(userData);
-	if (userD[0]["error"]!=""){
-		alert(userD[0]["error"]);
-	}else{
-		NewVoteTimer (["votesecleft"], userD[0]["voteid"]);
-		window.parent.location = userD[0]["voteurl"];
-	}	
-	
-}
-
-function SendVoteData(voteid){
-	SendDataWithAjax(15, [voteid]);
-}
 
 
 function SendDataWithAjax(typ, dArr) {

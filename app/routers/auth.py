@@ -114,8 +114,6 @@ async def register(request: Request, body: RegisterRequest, db: AsyncSession = D
         idnumber=client_ip,
         truename="", Prompt="", answer="",
         creatime=datetime.utcnow(),
-        WebPoint=settings.start_gold,
-        VotePoint=settings.start_point,
     )
     db.add(user)
     await db.commit()

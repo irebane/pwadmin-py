@@ -23,9 +23,6 @@ class Settings(BaseSettings):
     server_ver: int = 75
 
     start_gold: int = 0
-    start_point: int = 0
-    max_web_point: int = 9999
-    point_exc: int = 1
 
     secret_key: str
     app_port: int = 8420

@@ -1,4 +1,3 @@
-import ipaddress
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, update, text
@@ -6,12 +5,6 @@ from app.models.users import User, Auth, Forbid
 from app.auth.passwords import hash_password_compat, verify_password_compat, validate_date
 from app.config import settings
 
-
-def _long2ip(n) -> str:
-    try:
-        return str(ipaddress.IPv4Address(int(n) & 0xFFFFFFFF))
-    except Exception:
-        return "0.0.0.0"
 
 
 def _tool_resp(error="", success="", reloaduserdata="0", reloaduserlist="0"):
@@ -87,10 +80,7 @@ async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool 
         "birthday": bd,
         "gender": user.gender or 0,
         "regIp": user.idnumber or "",
-        "loginIp": _long2ip(user.mudev or 0),
-        "votepoint": user.VotePoint or 0,
-        "votedate": "",
-        "pointtogold": settings.point_exc or 1,
+        "loginIp": "",
     }
 
     return [{"error": ""}, user_data, session_data, gold_log, chars]
@@ -167,13 +157,9 @@ async def list_accounts_v2(db: AsyncSession, sname: str, stype: int) -> list:
     elif stype == 5:
         query = select(User).where(User.email.like(f"%{sname}%")).limit(50)
     elif stype == 2:
-        # by IP — idnumber (reg IP) or mudev (last login IP as int)
-        try:
-            ip_int = int(ipaddress.IPv4Address(sname))
-        except Exception:
-            ip_int = 0
+        # by IP — idnumber stores reg IP
         query = select(User).where(
-            (User.idnumber == sname) | (User.mudev == ip_int)
+            User.idnumber == sname
         ).limit(50)
     else:
         query = select(User).limit(100)
@@ -199,7 +185,7 @@ async def list_accounts_v2(db: AsyncSession, sname: str, stype: int) -> list:
             "email": u.email,
             "zoneid": online_map.get(u.ID, 0),
             "ip": u.idnumber or "",
-            "loginIp": _long2ip(u.mudev or 0),
+            "loginIp": "",
         }
 
     return [{"error": ""}, users_out]
@@ -225,14 +211,6 @@ async def account_tool_v2(db: AsyncSession, tool: int, params: dict, is_admin: b
         ), {"uid": uid, "cash": gold_cash, "now": now})
         await db.commit()
         return _tool_resp(success=f"Added {amount} gold to account: {uname} [{uid}]",
-                          reloaduserdata="1")
-
-    elif tool == 3:  # add vote point
-        if uid < 1 or amount < 1:
-            return _tool_resp(error="Invalid parameters.")
-        await db.execute(update(User).where(User.ID == uid).values(VotePoint=User.VotePoint + amount))
-        await db.commit()
-        return _tool_resp(success=f"Added {amount} points to account {uid}.",
                           reloaduserdata="1")
 
     elif tool == 4:  # add GM
@@ -291,30 +269,7 @@ async def account_tool_v2(db: AsyncSession, tool: int, params: dict, is_admin: b
         )).scalars().all()
         if not active:
             return _tool_resp(success="No active accounts in that period.", reloaduserlist="1")
-        await db.execute(
-            update(User).where(User.ID.in_(active)).values(WebPoint=User.WebPoint + reward)
-        )
-        await db.commit()
-        return _tool_resp(success=f"Gave {reward} gold to {len(active)} active accounts.",
-                          reloaduserlist="1")
-
-    elif tool == 11:  # reward active users with vote points
-        days = int(params.get("day", 1))
-        reward = int(params.get("amount", 0))
-        if reward < 1:
-            return _tool_resp(error="Invalid reward amount.")
-        cutoff = datetime.utcnow() - timedelta(days=days)
-        active = (await db.execute(
-            text("SELECT uid FROM point WHERE lastlogin >= :cutoff"), {"cutoff": cutoff}
-        )).scalars().all()
-        if not active:
-            return _tool_resp(success="No active accounts in that period.", reloaduserlist="1")
-        await db.execute(
-            update(User).where(User.ID.in_(active)).values(VotePoint=User.VotePoint + reward)
-        )
-        await db.commit()
-        return _tool_resp(success=f"Gave {reward} points to {len(active)} active accounts.",
-                          reloaduserlist="1")
+        return _tool_resp(error="Web points not supported on this server.")
 
     return _tool_resp(error=f"Unknown tool: {tool}")
 

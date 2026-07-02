@@ -5,8 +5,9 @@ Implements the same CUInt/UString/UInt32/Float encoding as the PHP packet_class.
 import socket
 import struct
 import logging
+from app.config import settings
 
-GAMEDBD_HOST = "127.0.0.1"
+GAMEDBD_HOST = settings.server_ip
 GAMEDBD_PORT = 29400
 TIMEOUT = 3
 
