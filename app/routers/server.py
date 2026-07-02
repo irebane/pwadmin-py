@@ -105,8 +105,13 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
         raise HTTPException(400, detail="Invalid action")
 
     if body.action in ("stopmaps", "startmaps"):
+        zones = settings.gs_zones_dict
+        if body.action == "startmaps":
+            args = list(zones.keys())
+        else:  # stopmaps — protect World-type zones (gs01 is always protected by the script itself)
+            args = [z for z, info in zones.items() if info.get("type") == "world"]
         await asyncio.create_subprocess_exec(
-            "sudo", "/home/gs_zone.sh", body.action,
+            "sudo", "/home/gs_zone.sh", body.action, *args,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
             stdin=asyncio.subprocess.DEVNULL,
