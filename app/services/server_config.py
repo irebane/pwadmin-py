@@ -46,7 +46,8 @@ def update_conf_key(content: str, key: str, value: str) -> str:
 
 
 # CMVal: class index → bit value in allow_login_class_mask
-_CM_VAL = {1: 1, 2: 2, 3: 16, 4: 8, 5: 128, 6: 64, 7: 4, 8: 32}
+_CM_VAL = {1: 1, 2: 2, 3: 16, 4: 8, 5: 128, 6: 64, 7: 4, 8: 32,
+           9: 256, 10: 512, 11: 1024, 12: 2048}
 
 
 def _read_threadpool_workers(path: Path, encoding: str = "utf-8") -> int | None:
@@ -109,10 +110,16 @@ async def read_game_config() -> dict:
         result["pvp"] = int(parse_conf_key(content, "pvp") or 0)
         result["tw"] = int(parse_conf_key(content, "battlefield") or 0)
         result["name_max_len"] = int(parse_conf_key(content, "max_name_len") or 16)
-        result["name_insens"] = int(parse_conf_key(content, "case_insensitive") or 0)
         init_log.append("gamesys.conf loaded")
     except Exception:
         init_log.append("Warning: gamesys.conf not readable")
+
+    try:
+        unamed = _server_file_path(2, "gamesys.conf")
+        content = await read_conf(unamed)
+        result["name_insens"] = int(parse_conf_key(content, "case_insensitive") or 0)
+    except Exception:
+        result["name_insens"] = 0
 
     glinkd_count = _read_glinkd_count_from_conf()
     result["glinkd_count"] = glinkd_count

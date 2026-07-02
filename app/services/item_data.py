@@ -8,7 +8,7 @@ ITEM_COLOR = ["#ffffff", "#ffffff", "#7777ff", "#00ff00", "#ffff00", "#ff0000"]
 PWRACE_COLOR = ["", "#fddcbb", "#bbffbb", "#cacaff", "#aaaaff", "#fada77", "#dddddd"]
 
 PW_CLASSES = ["Warrior", "Magician", "Werebeast", "Werefox", "Elf Archer", "Elf Priest",
-               "Psychic", "Assassin", "Seeker", "Mystic", "Tideborn Rogue", "Tideborn Assassin"]
+               "Psychic", "Assassin", "Seeker", "Mystic", "Duskblade", "Stormbringer"]
 
 CLASS_MASKS = [1, 2, 16, 8, 128, 64, 4, 32, 256, 512, 1024, 2048]
 
