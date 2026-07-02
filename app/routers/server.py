@@ -132,6 +132,8 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
         output = stdout.decode(errors="replace").strip()
         if "Already running" in output:
             raise HTTPException(409, detail="Zone is already running.")
+        if "Insufficient memory" in output:
+            raise HTTPException(503, detail=output)
         return {"ok": True}
     except asyncio.TimeoutError:
         raise HTTPException(504, detail="Zone command timed out")
