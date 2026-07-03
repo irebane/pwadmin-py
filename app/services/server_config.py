@@ -21,6 +21,8 @@ async def write_conf_atomic(path: Path, content: str, encoding: str = "utf-8") -
     if os.access(path.parent, os.W_OK):
         tmp = str(path) + ".tmp"
         Path(tmp).write_text(content, encoding=encoding)
+        if path.exists():
+            os.chmod(tmp, path.stat().st_mode)
         os.replace(tmp, str(path))
     else:
         path.write_text(content, encoding=encoding)
