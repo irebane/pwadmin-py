@@ -330,7 +330,7 @@ function EditUserData(userData){
 			['Gold Amount','When','Status'].forEach(function(h, idx){
 				var th = document.createElement('th');
 				th.textContent = h;
-				if (idx===2) th.className = 'text-center';
+				th.className = idx===2 ? 'text-center' : 'text-left';
 				row.appendChild(th);
 			});
 			for (var i=0; i<clogc; i++){
@@ -384,7 +384,7 @@ function RenderChars(chars, usrank){
 		var banTypeLabel = {1:'Account',2:'Chat (Acct)',3:'Chat',4:'Role'};
 		var hrow = table.insertRow(-1);
 		headers.forEach(function(h){
-			var th = document.createElement('th'); th.textContent = h; hrow.appendChild(th);
+			var th = document.createElement('th'); th.textContent = h; th.className = 'text-left'; hrow.appendChild(th);
 		});
 		for (var i = 0; i < charc; i++){
 			var role = chars[i];
