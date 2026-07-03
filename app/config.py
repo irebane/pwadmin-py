@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     lan_ip: str = "127.0.0.1"
     server_port: int = 29400
     server_path: str = "/home/server/"
+    formatlog_path: str = "/home/logservice/logs/world2.formatlog"
     admin_id: int = 0
     admin_pw: str = ""
     akey1: str = ""

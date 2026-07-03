@@ -2,14 +2,18 @@
 Binary packet client for the PW game server's gamedbd socket (port 29400).
 Implements the same CUInt/UString/UInt32/Float encoding as the PHP packet_class.php.
 """
+import re
 import socket
 import struct
 import logging
+from pathlib import Path
 from app.config import settings
 
 GAMEDBD_HOST = settings.server_ip
 GAMEDBD_PORT = 29400
 TIMEOUT = 3
+
+_CREATEROLE_RE = re.compile(r"formatlog:createrole-success:userid=(\d+):account=[^:]*:roleid=(\d+):")
 
 # ── CUInt (variable-length big-endian integer) ───────────────────────────────
 
@@ -122,6 +126,29 @@ def _cls2class(cls: int) -> int:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+def find_roles_from_log(user_id: int) -> list[int]:
+    """
+    gdeliveryd logs every character creation to the formatlog independently of
+    gamedbd's own account->role index. When that index goes missing an entry
+    (confirmed to happen — see get_user_roles), this recovers the candidate
+    role_ids so they can be verified directly against the character record.
+    """
+    path = Path(settings.formatlog_path)
+    if not path.is_file():
+        return []
+    role_ids = set()
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                m = _CREATEROLE_RE.search(line)
+                if m and int(m.group(1)) == user_id:
+                    role_ids.add(int(m.group(2)))
+    except OSError as e:
+        logging.warning("find_roles_from_log read error: %s", e)
+        return []
+    return sorted(role_ids)
+
+
 def get_user_roles(account_aid: int) -> list[dict]:
     """
     Send opcode 0xD49 to gamedbd — returns list of {role_id, role_name} dicts
@@ -131,20 +158,31 @@ def get_user_roles(account_aid: int) -> list[dict]:
     body = _write_uint32(0xFFFFFFFF) + _write_uint32(account_aid)
     packet = _build_packet(0xD49, body)
     response = _send_recv(packet)
-    if not response:
-        return []
-    try:
-        pos = _skip_response_header(response, 0)
-        char_count, pos = _cuint_decode(response, pos)
-        roles = []
-        for _ in range(char_count):
-            role_id, pos = _read_uint32(response, pos)
-            role_name, pos = _read_ustring(response, pos)
-            roles.append({"role_id": role_id, "role_name": role_name})
+    roles = []
+    if response:
+        try:
+            pos = _skip_response_header(response, 0)
+            char_count, pos = _cuint_decode(response, pos)
+            for _ in range(char_count):
+                role_id, pos = _read_uint32(response, pos)
+                role_name, pos = _read_ustring(response, pos)
+                roles.append({"role_id": role_id, "role_name": role_name})
+        except Exception as e:
+            logging.warning("get_user_roles parse error: %s", e)
+            roles = []
+
+    if roles:
         return roles
-    except Exception as e:
-        logging.warning("get_user_roles parse error: %s", e)
-        return []
+
+    # gamedbd's index came back empty — fall back to the log-derived candidates
+    # and verify each one directly against the character record before trusting it.
+    classes = settings.pw_classes_dict
+    recovered = []
+    for role_id in find_roles_from_log(account_aid):
+        base = get_role_base(role_id, classes)
+        if base and base.get("owner_uid") == account_aid:
+            recovered.append({"role_id": role_id, "role_name": base["role_name"]})
+    return recovered
 
 
 def get_role_base(role_id: int, classes: dict) -> dict | None:
@@ -161,15 +199,15 @@ def get_role_base(role_id: int, classes: dict) -> dict | None:
         pos = _skip_response_header(response, 0)
         _, pos = _read_byte(response, pos)          # version
         _, pos = _read_uint32(response, pos)        # role_id (echo)
-        _, pos = _read_ustring(response, pos)       # name (already have it)
+        role_name, pos = _read_ustring(response, pos)
         _, pos = _read_uint32(response, pos)        # race (unused here)
         raw_cls, pos = _read_uint32(response, pos)  # raw class
         _, pos = _read_byte(response, pos)          # gender
         _, pos = _read_octets(response, pos)        # custom_data
         _, pos = _read_octets(response, pos)        # config_data
         _, pos = _read_uint32(response, pos)        # custom_stamp
-        _, pos = _read_byte(response, pos)          # status
-        _, pos = _read_uint32(response, pos)        # delete_time
+        status, pos = _read_byte(response, pos)     # status
+        delete_time, pos = _read_uint32(response, pos)
         _, pos = _read_uint32(response, pos)        # create_time
         _, pos = _read_uint32(response, pos)        # lastlogin_time
         forbid_count, pos = _cuint_decode(response, pos)
@@ -180,10 +218,10 @@ def get_role_base(role_id: int, classes: dict) -> dict | None:
             f_createtime, pos = _read_uint32(response, pos)
             f_reason, pos = _read_ustring(response, pos)
             forbid.append({"type": f_type, "time": f_time, "createtime": f_createtime, "reason": f_reason})
-        _, pos = _read_octets(response, pos)        # extra octets
-        _, pos = _read_uint32(response, pos)
-        _, pos = _read_uint32(response, pos)
-        _, pos = _read_octets(response, pos)
+        _, pos = _read_octets(response, pos)        # help_states
+        _, pos = _read_uint32(response, pos)        # spouse
+        owner_uid, pos = _read_uint32(response, pos)  # owning account id, per the char record itself
+        _, pos = _read_octets(response, pos)        # cross_data
         _, pos = _read_byte(response, pos)
         _, pos = _read_byte(response, pos)
         _, pos = _read_byte(response, pos)
@@ -210,6 +248,10 @@ def get_role_base(role_id: int, classes: dict) -> dict | None:
             role_path = "Aware of Principle "
 
         return {
+            "role_name": role_name,
+            "owner_uid": owner_uid,
+            "status": status,
+            "delete_time": delete_time,
             "role_class": role_class,
             "role_path": role_path,
             "role_level": role_level,

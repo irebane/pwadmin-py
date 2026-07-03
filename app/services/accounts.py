@@ -93,8 +93,13 @@ async def load_chars_v2(user_id: int) -> dict:
     loop = asyncio.get_running_loop()
     role_list = await loop.run_in_executor(None, get_user_roles, user_id)
     chars = {}
-    for i, role in enumerate(role_list):
+    i = 0
+    for role in role_list:
         base = await loop.run_in_executor(None, get_role_base, role["role_id"], classes)
+        if base is not None and base.get("owner_uid") != user_id:
+            # gamedbd's index pointed at a character that isn't actually this
+            # account's — never show it under the wrong account.
+            continue
         chars[i] = {
             "roleid": role["role_id"],
             "rolename": role["role_name"],
@@ -107,6 +112,7 @@ async def load_chars_v2(user_id: int) -> dict:
             "map": base["map"] if base else 0,
             "forbid": base["forbid"] if base else [],
         }
+        i += 1
     return chars
 
 
