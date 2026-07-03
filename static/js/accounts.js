@@ -327,37 +327,32 @@ function EditUserData(userData){
 		table.innerHTML = '';
 		if (clogc>0){
 			row = table.insertRow(-1);
-			cell = row.insertCell(0);
-			cell.style.cssText='text-align:center;color:#94a3b8;font-size:11px;padding:2px 4px;border-bottom:1px solid #1e293b;';
-			cell.innerHTML='<b>Gold Amount</b>';
-			cell = row.insertCell(1);
-			cell.style.cssText='text-align:center;color:#94a3b8;font-size:11px;padding:2px 4px;border-bottom:1px solid #1e293b;';
-			cell.innerHTML='<b>When</b>';
-			cell = row.insertCell(2);
-			cell.style.cssText='text-align:center;color:#94a3b8;font-size:11px;padding:2px 4px;border-bottom:1px solid #1e293b;';
-			cell.innerHTML='<b>Status</b>';
+			['Gold Amount','When','Status'].forEach(function(h, idx){
+				var th = document.createElement('th');
+				th.textContent = h;
+				if (idx===2) th.className = 'text-center';
+				row.appendChild(th);
+			});
 			for (var i=0; i<clogc; i++){
 				var entry = userD[3][i];
 				var isPending = entry["pending"] == 1;
 				row = table.insertRow(-1);
 				cell = row.insertCell(0);
-				cell.style.cssText='padding:2px 4px;border-bottom:1px solid #1e293b;';
-				cell.innerHTML='<b style="color:#fbbf24;">'+(entry["cash"] / 100)+'</b>';
+				cell.innerHTML='<b>'+(entry["cash"] / 100)+'</b>';
 				cell = row.insertCell(1);
-				cell.style.cssText='padding:2px 4px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:11px;';
 				cell.innerHTML=entry["fintime"];
 				cell = row.insertCell(2);
-				cell.style.cssText='padding:2px 4px;border-bottom:1px solid #1e293b;text-align:center;';
+				cell.className = 'text-center';
 				if (isPending) {
-					cell.innerHTML='<span style="color:#f59e0b;font-size:10px;font-weight:600;">PENDING</span>';
+					cell.innerHTML='<span class="text-amber-500 text-[10px] font-semibold">PENDING</span>';
 				} else {
-					cell.innerHTML='<span style="color:#4ade80;font-size:10px;font-weight:600;">RECEIVED</span>';
+					cell.innerHTML='<span class="text-emerald-400 text-[10px] font-semibold">RECEIVED</span>';
 				}
 			}
 		}else{
 			row = table.insertRow(-1);
 			cell = row.insertCell(0);
-			cell.style.cssText='text-align:center;color:#475569;font-style:italic;padding:8px;';
+			cell.className = 'text-center text-slate-600 italic p-2';
 			cell.colSpan = '3';
 			cell.textContent='No transaction history.';
 		}
