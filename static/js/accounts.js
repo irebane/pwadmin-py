@@ -533,7 +533,11 @@ function RenderDeletedChars(chars){
 		cell = row.insertCell(1);
 		cell.innerHTML = role.rolepath+' '+role.roleclass+' ('+role.rolelevel+')';
 		cell = row.insertCell(2);
-		if (role.deleteTime > 0){
+		if (role.removedReason === 'purged'){
+			cell.innerHTML = '<span class="text-slate-500 text-[10px]">purged — no data remains</span>';
+		}else if (role.removedReason === 'wiped'){
+			cell.innerHTML = '<span class="text-slate-500 text-[10px]">data cleared (status '+role.status+')</span>';
+		}else if (role.deleteTime > 0){
 			cell.innerHTML = new Date(role.deleteTime * 1000).toLocaleString()+' <span class="text-slate-500 text-[10px]">(status '+role.status+')</span>';
 		}else{
 			cell.innerHTML = '<span class="text-slate-500 text-[10px]">not in account index (status '+role.status+')</span>';

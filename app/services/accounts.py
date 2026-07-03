@@ -138,16 +138,30 @@ async def load_deleted_chars_v2(user_id: int) -> dict:
         if role_id in active_ids:
             continue
         base = await loop.run_in_executor(None, get_role_base, role_id, classes)
-        if not base or base.get("owner_uid") != user_id:
+        if base is None:
+            # key itself is gone from gamedbd — nothing left to inspect but the
+            # log still proves it once existed.
+            chars[i] = {
+                "roleid": role_id, "rolename": "(purged — no data remains)",
+                "roleclass": "", "rolepath": "", "rolelevel": 0,
+                "status": None, "deleteTime": None, "removedReason": "purged",
+            }
+            i += 1
+            continue
+        wiped = base.get("owner_uid") == 0 and not base.get("role_name")
+        if not wiped and base.get("owner_uid") != user_id:
+            # role_id was recycled and now belongs to a different, currently
+            # live character — not this account's history.
             continue
         chars[i] = {
             "roleid": role_id,
-            "rolename": base["role_name"],
-            "roleclass": base["role_class"],
-            "rolepath": base["role_path"],
-            "rolelevel": base["role_level"],
+            "rolename": base["role_name"] if not wiped else "(data cleared)",
+            "roleclass": base["role_class"] if not wiped else "",
+            "rolepath": base["role_path"] if not wiped else "",
+            "rolelevel": base["role_level"] if not wiped else 0,
             "status": base["status"],
             "deleteTime": base["delete_time"],
+            "removedReason": "wiped" if wiped else "dropped from index",
         }
         i += 1
     return chars
