@@ -55,10 +55,10 @@ input[type=text]:focus,select:focus{outline:none;border-color:#3b82f6;}
   </div>
   <div class="border-t border-slate-700 my-2"></div>
   <div class="flex items-center gap-x-2 text-xs">
-    <a href="javascript:void(0);" onclick="SendCustomItem();"><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">Send Item</button></a>
-    <a href="javascript:void(0);" onclick="SelectNewItem();"><button class="px-3 py-1 bg-violet-700 hover:bg-violet-600 border border-violet-600 rounded text-xs text-white transition">Make Packet</button></a>
-    <a href="javascript:void(0);" onclick="document.getElementById('SelectWindow').style.display='block';"><button class="px-3 py-1 bg-cyan-700 hover:bg-cyan-600 border border-cyan-600 rounded text-xs text-white transition">Packet List</button></a>
-    <button onclick="openAddToBoutique();" class="px-3 py-1 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition">+ G-Shop</button>
+    <a href="javascript:void(0);" onclick="SendCustomItem();"><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">Send Item</button></a>
+    <a href="javascript:void(0);" onclick="SelectNewItem();"><button class="px-3 py-1 bg-violet-700 hover:bg-violet-600 border border-violet-600 rounded text-xs text-white transition font-semibold">Make Packet</button></a>
+    <a href="javascript:void(0);" onclick="document.getElementById('SelectWindow').style.display='block';"><button class="px-3 py-1 bg-cyan-700 hover:bg-cyan-600 border border-cyan-600 rounded text-xs text-white transition font-semibold">Packet List</button></a>
+    <button onclick="openAddToBoutique();" class="px-3 py-1 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition font-semibold">+ G-Shop</button>
     <span id="MailResponse" class="text-xs text-green-400 ml-2"></span>
   </div>
 </div>
@@ -68,7 +68,7 @@ input[type=text]:focus,select:focus{outline:none;border-color:#3b82f6;}
   <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <p style="font-size:12px;font-weight:600;color:#f8fafc;text-transform:uppercase;letter-spacing:.1em;">Add to G-Shop</p>
-      <button onclick="closeBoutiqueModal();" style="color:#475569;font-size:16px;background:none;border:none;cursor:pointer;">&#x2715;</button>
+      <button onclick="closeBoutiqueModal();" style="color:#475569;font-size:16px;background:none;border:none;cursor:pointer;font-weight:600;">&#x2715;</button>
     </div>
     <div id="boutiqueItemPreview" style="display:flex;align-items:center;gap:10px;background:#1e293b;border:1px solid #1e293b;border-radius:8px;padding:10px;margin-bottom:14px;">
       <img id="boutiqueItemIcon" src="/static/images/icons/0.gif" onerror="this.src='/static/images/icons/0.gif'" style="width:40px;height:40px;object-fit:contain;">
@@ -105,7 +105,7 @@ input[type=text]:focus,select:focus{outline:none;border-color:#3b82f6;}
     </table>
     <div style="margin-top:14px;display:flex;align-items:center;gap:8px;">
       <button id="boutiqueAddBtn" onclick="submitAddToBoutique();" style="flex:1;padding:7px 0;background:#b45309;border:1px solid #d97706;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Add to G-Shop</button>
-      <button onclick="closeBoutiqueModal();" style="padding:7px 14px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;">Cancel</button>
+      <button onclick="closeBoutiqueModal();" style="padding:7px 14px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#64748b;font-size:12px;cursor:pointer;font-weight:600;">Cancel</button>
     </div>
     <p id="boutiqueResult" style="margin-top:8px;font-size:11px;text-align:center;min-height:16px;"></p>
   </div>
@@ -187,7 +187,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 
 <!-- Action buttons -->
 <div class="flex gap-1.5 flex-wrap mb-2">
-  <a href="javascript:void(0);" onclick="document.getElementById('MathDiv').style.display='block';"><button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition">Math</button></a>
+  <a href="javascript:void(0);" onclick="document.getElementById('MathDiv').style.display='block';"><button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition font-semibold">Math</button></a>
 </div>
 
 <!-- Item Data -->
@@ -230,7 +230,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
     <option value="8">Fashion, Flyer</option><option value="19">No drop, trade</option>
     <option value="64">Bind Equip</option><option value="32791">Soulbound</option>
   </select>
-  <a href="javascript:void(0);" onclick="document.getElementById('ProcTypeDiv').style.display='block';"><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition">[*]</button></a>
+  <a href="javascript:void(0);" onclick="document.getElementById('ProcTypeDiv').style.display='block';"><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition font-semibold">[*]</button></a>
   <input type="text" maxlength="8" id="Sel_ProcType2" value="0" class="w-10">
 </td></tr>
 <tr><td>Count</td><td>
@@ -244,7 +244,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <tr><td>Expire</td><td>
   <input type="checkbox" class="accent-blue-500 cursor-pointer" id="Expire_Act">
   <input type="text" maxlength="5" id="Sel_Expire" value="0" class="w-14 text-center" disabled>
-  <a href="javascript:void(0);" onclick="document.getElementById('ExpirationDiv').style.display='block';"><button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition">Set</button></a>
+  <a href="javascript:void(0);" onclick="document.getElementById('ExpirationDiv').style.display='block';"><button class="px-3 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition font-semibold">Set</button></a>
 </td></tr>
 </table>
 </div>
@@ -293,7 +293,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </div>
 <div class="flex items-center justify-between text-xs mt-1">
   <span class="text-slate-500">Bonus: <span id="SockAddTxt" class="text-slate-300"></span></span>
-  <a href="javascript:void(0);" onclick="AddNewSckAddon();"><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">Insert stone</button></a>
+  <a href="javascript:void(0);" onclick="AddNewSckAddon();"><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">Insert stone</button></a>
 </div>
 </div>
 
@@ -372,7 +372,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   {% endfor %}
   </select>
 </td></tr>
-<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_W_AddonAmount" value='1' class="w-[50px]"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">+</button></a></td></tr>
+<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_W_AddonAmount" value='1' class="w-[50px]"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">+</button></a></td></tr>
 <tr><td colspan="2"><div id="AddonListDivW"></div></td></tr>
 <tr><td>Refine:</td><td><select id='Inp_W_RefLv' class="text-xs"><option value='0'>Not refined</option>{% for n in range(1,13) %}<option value='{{ n }}'>+{{ n }}</option>{% endfor %}</select></td></tr>
 <tr><td>Crafter:</td><td><input type="text" maxlength="12" id="Inp_W_Crafter" class="w-[190px]"></td></tr>
@@ -380,7 +380,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <div class="flex gap-2 mt-2">
   <a title="Auto subtype detection"><input type="checkbox" class="accent-blue-500 cursor-pointer" id="Inp_W_AutoOctet" checked></a>
   <input type="text" id="Inp_W_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(1);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(1);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -415,7 +415,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   {% endfor %}
   </select>
 </td></tr>
-<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_A_AddonAmount" value='1' class="w-[50px]"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">+</button></a></td></tr>
+<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_A_AddonAmount" value='1' class="w-[50px]"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">+</button></a></td></tr>
 <tr><td colspan="2"><div id="AddonListDivA"></div></td></tr>
 <tr><td>Refine:</td><td><select id='Inp_A_RefLv' class="text-xs"><option value='0' selected>Not refined</option>{% for n in range(1,13) %}<option value='{{ n }}'>+{{ n }}</option>{% endfor %}</select></td></tr>
 <tr><td>Crafter:</td><td><input type="text" maxlength="12" id="Inp_A_Crafter" class="w-[190px]"></td></tr>
@@ -423,7 +423,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <div class="flex items-center justify-center gap-2 mt-2">
   <a title="Auto subtype detection"><input type="checkbox" class="accent-blue-500 cursor-pointer" id="Inp_A_AutoOctet" checked></a>
   <input type="text" id="Inp_A_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(2);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(2);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -456,7 +456,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   {% endfor %}
   </select>
 </td></tr>
-<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_J_AddonAmount" value='1' class="w-[50px]"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">+</button></a></td></tr>
+<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_J_AddonAmount" value='1' class="w-[50px]"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">+</button></a></td></tr>
 <tr><td colspan="2"><div id="AddonListDivJ"></div></td></tr>
 <tr><td>Refine:</td><td><select id='Inp_J_RefLv' class="text-xs"><option value='0' selected>Not refined</option>{% for n in range(1,13) %}<option value='{{ n }}'>+{{ n }}</option>{% endfor %}</select></td></tr>
 <tr><td>Crafter:</td><td><input type="text" maxlength="12" id="Inp_J_Crafter" class="w-[190px]"></td></tr>
@@ -464,7 +464,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <div class="flex items-center justify-center gap-2 mt-2">
   <a title="Auto subtype detection"><input type="checkbox" class="accent-blue-500 cursor-pointer" id="Inp_J_AutoOctet" checked></a>
   <input type="text" id="Inp_J_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(3);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(3);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -490,7 +490,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O1_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(401);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(401);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -526,14 +526,14 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
     {% endfor %}
     </select>
     <input type="text" maxlength="1" id="Inp_P_LSkillLv" value='1' class="w-[45px] text-center">
-    <a href='javascript:void(0);' onclick='AddNewPetSkill();'><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">Learn</button></a>
+    <a href='javascript:void(0);' onclick='AddNewPetSkill();'><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">Learn</button></a>
     <span style='position:relative;left:50px;' id="LearnedPetSkills"></span>
   </div>
 </td></tr>
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O2_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(402);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(402);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -569,7 +569,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   {% endfor %}
   </select>
 </td></tr>
-<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_B_AddonAmount" value='1' class="w-[50px] bg-amber-950 text-amber-200"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">+</button></a></td></tr>
+<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_B_AddonAmount" value='1' class="w-[50px] bg-amber-950 text-amber-200"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">+</button></a></td></tr>
 <tr><td colspan="2"><div id="AddonListDivB"></div></td></tr>
 <tr><td>Refine:</td><td>
   <select id='Inp_B_RefType' class="w-[130px] text-xs">
@@ -586,7 +586,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O3_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(403);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(403);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -635,14 +635,14 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   {% endfor %}
   </select>
   <select id="Inp_E_LSkillLv" class="w-[40px] text-xs">{% for n in range(1,11) %}<option value='{{ n }}'>{{ n }}</option>{% endfor %}</select>
-  <a href='javascript:void(0);' onclick='AddNewElfSkill();'><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">Learn</button></a>
+  <a href='javascript:void(0);' onclick='AddNewElfSkill();'><button class="px-3 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">Learn</button></a>
   <span style='position:relative;left:30px;' id="LearnedElfSkills"></span>
 </td></tr>
 <tr><td>Refine:</td><td><select id='Inp_E_RefLv' class="text-xs"><option value='0'>Not refined</option>{% for n in range(1,37) %}<option value='{{ n }}'>+{{ n }}</option>{% endfor %}</select></td></tr>
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O4_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(404);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(404);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -674,7 +674,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </div>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O5_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(405);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(405);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -700,13 +700,13 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   {% endfor %}
   </select>
 </td></tr>
-<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_M_AddonAmount" value='1' class="w-[50px] bg-amber-950 text-amber-200"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition">Add</button></a></td></tr>
+<tr><td></td><td>Amount: <input type="text" maxlength="5" id="Inp_M_AddonAmount" value='1' class="w-[50px] bg-amber-950 text-amber-200"> <a href='javascript:void(0);' onclick='AddNewAddon();'><button class="px-2 py-1 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition font-semibold">Add</button></a></td></tr>
 <tr><td colspan="2"><div id="AddonListDivM"></div></td></tr>
-<tr><td>Amount:</td><td><input type="text" maxlength="5" id="Inp_M_AStack" value='1' class="w-[70px] text-center" onKeyUp="document.getElementById('Sel_Count').value=document.getElementById('Inp_M_AStack').value;"> <a href='javascript:void(0);' onclick="document.getElementById('Inp_M_AStack').value=50000;document.getElementById('Sel_Count').value=document.getElementById('Inp_M_AStack').value;"><button class="px-3 py-1 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition">Max</button></a></td></tr>
+<tr><td>Amount:</td><td><input type="text" maxlength="5" id="Inp_M_AStack" value='1' class="w-[70px] text-center" onKeyUp="document.getElementById('Sel_Count').value=document.getElementById('Inp_M_AStack').value;"> <a href='javascript:void(0);' onclick="document.getElementById('Inp_M_AStack').value=50000;document.getElementById('Sel_Count').value=document.getElementById('Inp_M_AStack').value;"><button class="px-3 py-1 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition font-semibold">Max</button></a></td></tr>
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O6_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(406);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(406);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -723,7 +723,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O7_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(407);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(407);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -738,7 +738,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O8_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(408);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(408);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -754,7 +754,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O9_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(409);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(409);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -770,7 +770,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O10_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(410);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(410);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -781,7 +781,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <div id='MiscDesc'></div>
 <table class="border-collapse max-w-[640px]">
 <tr><td>Octet:</td><td><input type="text" maxlength="5000" id="Inp_Ms_Octet" value='' class="w-[300px]"></td></tr>
-<tr><td>Amount:</td><td><input type="text" maxlength="5" id="Inp_Ms_Amount" value='1' class="w-[60px]" onKeyUp="document.getElementById('Sel_Count').value=document.getElementById('Inp_Ms_Amount').value;"> <a href='javascript:void(0);' onclick="document.getElementById('Inp_Ms_Amount').value=document.getElementById('Inp_Mss_Amount').value;document.getElementById('Sel_Count').value=document.getElementById('Inp_Ms_Amount').value;"><button class="px-3 py-1 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition">Max</button></a></td></tr>
+<tr><td>Amount:</td><td><input type="text" maxlength="5" id="Inp_Ms_Amount" value='1' class="w-[60px]" onKeyUp="document.getElementById('Sel_Count').value=document.getElementById('Inp_Ms_Amount').value;"> <a href='javascript:void(0);' onclick="document.getElementById('Inp_Ms_Amount').value=document.getElementById('Inp_Mss_Amount').value;document.getElementById('Sel_Count').value=document.getElementById('Inp_Ms_Amount').value;"><button class="px-3 py-1 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition font-semibold">Max</button></a></td></tr>
 <tr><td>Max Stack:</td><td><input type="text" maxlength="5" id="Inp_Mss_Amount" value='1' class="w-[60px]" onKeyUp="document.getElementById('Sel_MaxCount').value=document.getElementById('Inp_Mss_Amount').value;"></td></tr>
 <tr id='MiscQStack' style='display:none;'><td>Quests:</td><td></td></tr>
 </table>
@@ -799,7 +799,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 </table>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_O11_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(411);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(411);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -848,7 +848,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <span id='SCAddonList' class="text-xs"></span><br><br>
 <div class="flex items-center justify-center gap-2">
   <input type="text" id="Inp_O12_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(412);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(412);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -869,10 +869,10 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <tr><td>Leadership.:</td><td><input type="text" maxlength="1" id="Inp_C_Lead" value='1' class="w-[45px]"></td></tr>
 <tr><td>Level.:</td><td>
   <input type="text" maxlength="6" id="Inp_C_CurLv" value='1' class="w-[35px]" onChange="GetCardInfo();"> / <input type="text" maxlength="6" id="Inp_C_MaxLv" value='15' class="w-[35px]">
-  <a href='javascript:void(0);' onClick="ChangeCardLevel(-999);" title='Set to 1'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition">&lt;&lt;</button></a>
-  <a href='javascript:void(0);' onClick="ChangeCardLevel(-1);" title='-1'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition">&lt;</button></a>
-  <a href='javascript:void(0);' onClick="ChangeCardLevel(1);" title='+1'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition">&gt;</button></a>
-  <a href='javascript:void(0);' onClick="ChangeCardLevel(999);" title='Max'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition">&gt;&gt;</button></a>
+  <a href='javascript:void(0);' onClick="ChangeCardLevel(-999);" title='Set to 1'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition font-semibold">&lt;&lt;</button></a>
+  <a href='javascript:void(0);' onClick="ChangeCardLevel(-1);" title='-1'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition font-semibold">&lt;</button></a>
+  <a href='javascript:void(0);' onClick="ChangeCardLevel(1);" title='+1'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition font-semibold">&gt;</button></a>
+  <a href='javascript:void(0);' onClick="ChangeCardLevel(999);" title='Max'><button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-200 transition font-semibold">&gt;&gt;</button></a>
 </td></tr>
 <tr><td>Exp Lv.:</td><td><input type="text" maxlength="6" id="Inp_C_ExpLv" value='0' class="w-[45px]" onChange="GetCardInfo();"> / <span id='Inp_C_MaxExp'>17</span></td></tr>
 <tr><td>Reawaken:</td><td>
@@ -882,7 +882,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <input type='hidden' style='display:none;' id='CardID'>
 <div class="flex items-center justify-center gap-2 mt-2">
   <input type="text" id="Inp_C_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(8);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(8);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 <hr class="border-slate-700 my-3">
 <span class="text-slate-300 text-xs">Current Class:</span>
@@ -916,7 +916,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <div class="flex items-center justify-center gap-2 mt-2">
   <a title="Auto subtype detection"><input type="checkbox" class="accent-blue-500 cursor-pointer" id="Inp_F_AutoOctet" checked></a>
   <input type="text" id="Inp_F_NewOctet" value='' class="w-[120px]">
-  <a href='javascript:void(0);' onclick="LoadOctet(7);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition">Load Octet</button></a>
+  <a href='javascript:void(0);' onclick="LoadOctet(7);"><button class="px-3 py-1 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white transition font-semibold">Load Octet</button></a>
 </div>
 </div>
 
@@ -951,26 +951,26 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   <div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold">
     <input type="checkbox" id="Inp_SelAll" class="accent-blue-500 cursor-pointer mr-2" onChange="MarkAllPacketItem();">
     <b>Mail Packets</b>
-    <button onclick="document.getElementById('SelectWindow').style.display='none';document.getElementById('SelectEditWindow').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0">&#10006;</button>
+    <button onclick="document.getElementById('SelectWindow').style.display='none';document.getElementById('SelectEditWindow').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0 font-semibold">&#10006;</button>
   </div>
   <div id="SelectWindowCont" class="absolute top-[34px] inset-x-0 bottom-[38px] overflow-y-auto p-1">
     <span id="SelItemList" class="no-underline text-slate-300"><center><i>List is Empty</i></center></span>
   </div>
   <div class="absolute bottom-0 inset-x-0 h-[38px] bg-slate-700 border-t border-slate-600 px-2.5 py-1.5 flex items-center gap-1 flex-wrap box-border">
     <div id="SelMultiTool" class="inline-flex gap-1 flex-wrap" style="display:none;">
-      <a href="javascript:void(0);" onclick="GroupResetSelectedItem();"><button class="px-2 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition">Reset Role [&#10004;]</button></a>
-      <a href="javascript:void(0);" onclick="GroupResetTSelectedItem();"><button class="px-2 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition">Reset Timer [&#10004;]</button></a>
-      <a href="javascript:void(0);" onclick="GroupRemoveSelectedItem();"><button class="px-2 py-0.5 bg-red-800 hover:bg-red-700 border border-red-700 rounded text-xs text-white cursor-pointer transition">Delete [&#10004;]</button></a>
-      <a href='javascript:void(0);' onclick="GroupSendSelectedItem();"><button class="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white cursor-pointer transition">Send [&#10004;]</button></a>
-      <a href='javascript:void(0);' onclick="SaveSelectedPackets();"><button class="px-2 py-0.5 bg-green-800 hover:bg-green-700 border border-green-700 rounded text-xs text-white cursor-pointer transition">Save [&#10004;]</button></a>
+      <a href="javascript:void(0);" onclick="GroupResetSelectedItem();"><button class="px-2 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition font-semibold">Reset Role [&#10004;]</button></a>
+      <a href="javascript:void(0);" onclick="GroupResetTSelectedItem();"><button class="px-2 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition font-semibold">Reset Timer [&#10004;]</button></a>
+      <a href="javascript:void(0);" onclick="GroupRemoveSelectedItem();"><button class="px-2 py-0.5 bg-red-800 hover:bg-red-700 border border-red-700 rounded text-xs text-white cursor-pointer transition font-semibold">Delete [&#10004;]</button></a>
+      <a href='javascript:void(0);' onclick="GroupSendSelectedItem();"><button class="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white cursor-pointer transition font-semibold">Send [&#10004;]</button></a>
+      <a href='javascript:void(0);' onclick="SaveSelectedPackets();"><button class="px-2 py-0.5 bg-green-800 hover:bg-green-700 border border-green-700 rounded text-xs text-white cursor-pointer transition font-semibold">Save [&#10004;]</button></a>
     </div>
-    <a href='javascript:void(0);' onclick="LoadPacketItems();"><button class="px-2 py-0.5 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white cursor-pointer transition">Load</button></a>
+    <a href='javascript:void(0);' onclick="LoadPacketItems();"><button class="px-2 py-0.5 bg-cyan-800 hover:bg-cyan-700 border border-cyan-700 rounded text-xs text-white cursor-pointer transition font-semibold">Load</button></a>
   </div>
 </div>
 
 <!-- ── SelectEditWindow ──────────────────────────────────────────── -->
 <div id="SelectEditWindow" class="fixed z-[9999] bg-slate-800 border border-slate-600 rounded-lg overflow-hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="display:none;">
-<div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Edit Packet Data</b><button onclick="document.getElementById('SelectEditWindow').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0">&#10006;</button></div>
+<div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Edit Packet Data</b><button onclick="document.getElementById('SelectEditWindow').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0 font-semibold">&#10006;</button></div>
 <div class="p-2">
 <table class="w-full border-collapse text-xs">
 <tr><td class="py-0.5 pr-2 whitespace-nowrap text-slate-400">Packet Id:</td><td><input type="text" maxlength="6" id="SE_PacketId" value='' class="w-[50px]" disabled><input type="text" id="SE_CAT" value='' class="w-[50px]" disabled style="display:none;"></td></tr>
@@ -994,15 +994,15 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <tr><td class="py-0.5 pr-2 whitespace-nowrap text-slate-400">Octet:</td><td><input type="text" maxlength="255" id="SE_Octet" value='' class="w-[200px]"></td></tr>
 </table>
 <div class="flex justify-center gap-2 mt-2">
-  <a href='javascript:void(0);' onclick="UpdateSelItemChanges();"><button class="px-3 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white cursor-pointer transition">Update</button></a>
-  <a href='javascript:void(0);' onclick="document.getElementById('SelectEditWindow').style.display='none';"><button class="px-3 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition">Close</button></a>
+  <a href='javascript:void(0);' onclick="UpdateSelItemChanges();"><button class="px-3 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white cursor-pointer transition font-semibold">Update</button></a>
+  <a href='javascript:void(0);' onclick="document.getElementById('SelectEditWindow').style.display='none';"><button class="px-3 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition font-semibold">Close</button></a>
 </div>
 </div>
 </div>
 
 <!-- ── MathDiv ───────────────────────────────────────────────────── -->
 <div id="MathDiv" class="fixed z-[9999] bg-slate-800 border border-slate-600 rounded-lg overflow-hidden w-[220px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="display:none;">
-  <div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Conv Tool</b><button onclick="document.getElementById('MathDiv').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0">&#10006;</button></div>
+  <div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Conv Tool</b><button onclick="document.getElementById('MathDiv').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0 font-semibold">&#10006;</button></div>
   <div class="p-2">
   <table class="w-full border-collapse text-xs">
   <tr><td class="py-0.5 pr-1 text-slate-400">Decimal:</td><td><input type="text" maxlength="10" id="Math_Dec" value='0' class="w-[60px] text-center" onKeyUp="MathConvDec();" onChange="MathConvDec();"></td><td></td></tr>
@@ -1017,7 +1017,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 
 <!-- ── ExpirationDiv ─────────────────────────────────────────────── -->
 <div id="ExpirationDiv" class="fixed z-[9999] bg-slate-800 border border-slate-600 rounded-lg overflow-hidden min-h-[140px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="display:none;">
-  <div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Expiration Timer</b><button onclick="document.getElementById('ExpirationDiv').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0">&#10006;</button></div>
+  <div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Expiration Timer</b><button onclick="document.getElementById('ExpirationDiv').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0 font-semibold">&#10006;</button></div>
   <table class="w-full border-collapse text-xs">
   <tr><td class="p-2 text-slate-300"><b>Current Time:</b> <input type="text" id="Cur_Time" value='' class="w-[70px] text-center" disabled> <b>+</b> <input type="text" id="Cur_PlusNr" value='0' class="w-[35px] text-center"> <select id="Cur_PlusType" class="text-xs"><option value="60">min</option><option value="3600">hour</option><option value="86400">day</option></select> <input type="checkbox" class="align-middle accent-blue-500 cursor-pointer" id="Expire_Stop"> Stop <input type="text" id="Time_ClntVsServ" value='{{ server_time }}' style="position:absolute;left:-9999px;display:none;"></td></tr>
   </table>
@@ -1035,17 +1035,17 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 {% endfor %}
 </table>
 <div class="flex justify-center mt-2">
-  <a href="javascript:void(0);" onclick="document.getElementById('ProcTypeDiv').style.display='none';"><button class="px-3 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition">Close</button></a>
+  <a href="javascript:void(0);" onclick="document.getElementById('ProcTypeDiv').style.display='none';"><button class="px-3 py-0.5 bg-slate-600 hover:bg-slate-500 border border-slate-500 rounded text-xs text-slate-200 cursor-pointer transition font-semibold">Close</button></a>
 </div>
 </div>
 
 <!-- ── RuneTimeDiv ───────────────────────────────────────────────── -->
 <div id="RuneTimeDiv" class="fixed z-[9999] bg-slate-800 border border-slate-600 rounded-lg overflow-hidden min-h-[150px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="display:none;">
-  <div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Rune Settings</b><button onclick="document.getElementById('RuneTimeDiv').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0">&#10006;</button></div>
+  <div class="relative flex items-center w-full bg-slate-700 text-slate-100 text-sm px-2.5 py-1.5 font-semibold"><b>Rune Settings</b><button onclick="document.getElementById('RuneTimeDiv').style.display='none';" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300 cursor-pointer text-lg leading-none bg-transparent border-none p-0 font-semibold">&#10006;</button></div>
   <div class="absolute top-[50px] text-xs text-slate-300 px-3 py-2">
     Duration:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" maxlength="4" id="Inp_Rune_Time" class="w-[50px] text-center" value="30">
     <select id='Rune_Size' class="text-xs"><option value="1" checked>minute</option><option value="60">hour</option><option value="1440">day</option></select><br><br>
-    <div class="flex justify-center"><a href="javascript:void(0);" onclick="AddNewAddon();"><button class="px-3 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white cursor-pointer transition">Insert Rune</button></a></div>
+    <div class="flex justify-center"><a href="javascript:void(0);" onclick="AddNewAddon();"><button class="px-3 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white cursor-pointer transition font-semibold">Insert Rune</button></a></div>
   </div>
 </div>
 

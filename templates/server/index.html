@@ -172,7 +172,7 @@
           <div class="flex items-center gap-3">
             <span class="text-xs text-slate-600" x-text="log.length + ' entries'"></span>
             <button @click.stop="clearLog()"
-              class="text-xs text-slate-600 hover:text-slate-300 transition">Clear</button>
+              class="text-xs text-slate-600 hover:text-slate-300 transition font-semibold">Clear</button>
             <span class="text-slate-600 text-xs" x-text="logOpen ? '▲' : '▼'"></span>
           </div>
         </div>
@@ -187,10 +187,10 @@
           <div x-show="logPageCount > 1"
                class="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
             <button @click="logPage = Math.max(1, logPage - 1)" :disabled="logPage === 1"
-              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition">← Prev</button>
+              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition font-semibold">← Prev</button>
             <span class="text-xs text-slate-600" x-text="'Page ' + logPage + ' / ' + logPageCount"></span>
             <button @click="logPage = Math.min(logPageCount, logPage + 1)" :disabled="logPage === logPageCount"
-              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition">Next →</button>
+              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition font-semibold">Next →</button>
           </div>
         </div>
       </div>
@@ -489,7 +489,7 @@
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Backups</span>
               <button @click="backupsOpen = !backupsOpen"
-                class="text-xs text-slate-600 hover:text-slate-300"
+                class="text-xs text-slate-600 hover:text-slate-300 font-semibold"
                 x-text="backupsOpen ? '▲ hide' : '▼ show (' + backups.length + ')'"></button>
             </div>
             <div x-show="backupsOpen" x-cloak class="space-y-1">
@@ -501,11 +501,11 @@
                   </div>
                   <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button @click="activate(bak.name)"
-                      class="px-2 py-0.5 bg-blue-800 hover:bg-blue-700 rounded text-blue-300 hover:text-white">
+                      class="px-2 py-0.5 bg-blue-800 hover:bg-blue-700 rounded text-blue-300 hover:text-white font-semibold">
                       Activate
                     </button>
                     <button @click="deleteBackup(bak.name)"
-                      class="px-2 py-0.5 bg-red-950/60 hover:bg-red-800/60 rounded text-red-500 hover:text-red-300">
+                      class="px-2 py-0.5 bg-red-950/60 hover:bg-red-800/60 rounded text-red-500 hover:text-red-300 font-semibold">
                       Delete
                     </button>
                   </div>
@@ -532,7 +532,7 @@
         <span class="text-xs text-slate-500"
           x-text="glinkd.filter(g => g.up).length + ' / ' + glinkd.length + ' online'"></span>
         <button @click="glinkdOpen = false"
-          class="text-slate-600 hover:text-slate-300 text-lg leading-none">×</button>
+          class="text-slate-600 hover:text-slate-300 text-lg leading-none font-semibold">×</button>
       </div>
     </div>
     <div class="grid grid-cols-4 gap-2">

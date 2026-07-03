@@ -66,9 +66,9 @@
             <td class="px-3 py-1.5 text-right" x-text="item.duration || 'Perm'"></td>
             <td class="px-3 py-1.5 text-center">
               <button @click="editItem(item)"
-                class="text-xs px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded mr-1">Edit</button>
+                class="text-xs px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded mr-1 font-semibold">Edit</button>
               <button @click="deleteItem(item.idx)"
-                class="text-xs px-2 py-0.5 bg-red-900/50 hover:bg-red-800/50 text-red-400 rounded">Del</button>
+                class="text-xs px-2 py-0.5 bg-red-900/50 hover:bg-red-800/50 text-red-400 rounded font-semibold">Del</button>
             </td>
           </tr>
         </template>
@@ -137,7 +137,7 @@
           <span x-text="editingItem ? 'Update' : 'Add'"></span>
         </button>
         <button @click="closeModal()"
-          class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm text-slate-300">
+          class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm text-slate-300 font-semibold">
           Cancel
         </button>
       </div>
