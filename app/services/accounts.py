@@ -38,22 +38,22 @@ async def load_account_v2(db: AsyncSession, user_id: int, viewer_is_admin: bool 
     gold_log = {}
     idx = 0
 
-    # pending gold first (most recent)
+    # pending gold — requested (creatime, UTC) but not yet picked up by the game server
     pend_rows = await db.execute(
         text("SELECT cash, creatime FROM usecashnow WHERE userid=:uid ORDER BY creatime DESC LIMIT 10"),
         {"uid": user_id}
     )
     for r in pend_rows.fetchall():
-        gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.creatime), "pending": 1}
+        gold_log[idx] = {"cash": int(r.cash), "reqtime": str(r.creatime), "fintime": "", "pending": 1}
         idx += 1
 
-    # completed gold log
+    # completed gold log — creatime (requested, UTC) and fintime (processed, game server local clock)
     log_rows = await db.execute(
-        text("SELECT cash, fintime FROM usecashlog WHERE userid=:uid ORDER BY fintime DESC LIMIT 30"),
+        text("SELECT cash, creatime, fintime FROM usecashlog WHERE userid=:uid ORDER BY fintime DESC LIMIT 30"),
         {"uid": user_id}
     )
     for r in log_rows.fetchall():
-        gold_log[idx] = {"cash": int(r.cash), "fintime": str(r.fintime), "pending": 0}
+        gold_log[idx] = {"cash": int(r.cash), "reqtime": str(r.creatime), "fintime": str(r.fintime), "pending": 0}
         idx += 1
 
     chars = {}  # populated asynchronously by /api/accounts/chars

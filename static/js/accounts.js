@@ -12,11 +12,25 @@ function stringToDate(s) {
 }
 
 function stringToGMTDate(s) {
-  var dateParts = s.split(' ')[0].split('-'); 
+  var dateParts = s.split(' ')[0].split('-');
   var timeParts = s.split(' ')[1].split(':');
   var dateStr = `${dateParts[0]}-${("0"+dateParts[1]).substr(-2)}-${("0"+dateParts[2]).substr(-2)}T${timeParts[0]}:${timeParts[1]}:${timeParts[2]}.000Z`;
   var d = new Date(dateStr);
   return d;
+}
+
+// reqtime (usecashnow/usecashlog.creatime) is written by this app in UTC.
+// fintime (usecashlog.fintime) is written by the game server in its own local
+// clock, so it needs the SrvrTmZone offset applied before the two are comparable.
+function goldProcessingGap(reqStr, finStr){
+  if (!reqStr || !finStr) return '';
+  var reqMs = stringToGMTDate(reqStr).getTime();
+  var finMs = stringToGMTDate(finStr).getTime() - (SrvrTmZone*1000);
+  var diffSec = Math.round((finMs - reqMs)/1000);
+  if (diffSec < 0) diffSec = 0;
+  if (diffSec < 60) return diffSec+'s later';
+  if (diffSec < 3600) return Math.round(diffSec/60)+'m later';
+  return Math.round(diffSec/3600)+'h later';
 }
 
 
@@ -327,10 +341,10 @@ function EditUserData(userData){
 		table.innerHTML = '';
 		if (clogc>0){
 			row = table.insertRow(-1);
-			['Gold Amount','When','Status'].forEach(function(h, idx){
+			['Gold Amount','Requested','Processed','Status'].forEach(function(h, idx){
 				var th = document.createElement('th');
 				th.textContent = h;
-				th.className = idx===2 ? 'text-center' : 'text-left';
+				th.className = idx===3 ? 'text-center' : 'text-left';
 				row.appendChild(th);
 			});
 			for (var i=0; i<clogc; i++){
@@ -340,8 +354,15 @@ function EditUserData(userData){
 				cell = row.insertCell(0);
 				cell.innerHTML='<b>'+(entry["cash"] / 100)+'</b>';
 				cell = row.insertCell(1);
-				cell.innerHTML=entry["fintime"];
+				cell.innerHTML=entry["reqtime"];
 				cell = row.insertCell(2);
+				if (isPending){
+					cell.innerHTML='<span class="text-slate-600">—</span>';
+				}else{
+					var gap = goldProcessingGap(entry["reqtime"], entry["fintime"]);
+					cell.innerHTML = entry["fintime"] + (gap ? ' <span class="text-slate-500 text-[10px]">('+gap+')</span>' : '');
+				}
+				cell = row.insertCell(3);
 				cell.className = 'text-center';
 				if (isPending) {
 					cell.innerHTML='<span class="text-amber-500 text-[10px] font-semibold">PENDING</span>';
@@ -353,7 +374,7 @@ function EditUserData(userData){
 			row = table.insertRow(-1);
 			cell = row.insertCell(0);
 			cell.className = 'text-center text-slate-600 italic p-2';
-			cell.colSpan = '3';
+			cell.colSpan = '4';
 			cell.textContent='No transaction history.';
 		}
 		document.getElementById('CharList').innerHTML='<tr><td style="color:#64748b;font-style:italic;padding:6px 0;" colspan="3">Loading characters…</td></tr>';

@@ -1,3 +1,4 @@
+import datetime as _dt
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -80,7 +81,10 @@ async def account_page(request: Request):
     session, redir = _require_session(request)
     if redir:
         return redir
-    return templates.TemplateResponse(request, "account/index.html", {"user_id": session.get("id", 0), "is_admin": session.get("is_admin", False)})
+    tz_offset = int(_dt.datetime.now().astimezone().utcoffset().total_seconds())
+    return templates.TemplateResponse(request, "account/index.html", {
+        "user_id": session.get("id", 0), "is_admin": session.get("is_admin", False), "tz_offset": tz_offset,
+    })
 
 
 @app.get("/gshop")
