@@ -72,7 +72,7 @@ def _read_glinkd_count_from_conf() -> int:
     path = Path(settings.server_path) / "gamed" / "gmserver.conf"
     try:
         in_ps = False
-        for ln in path.read_text().splitlines():
+        for ln in path.read_text(encoding="utf-8", errors="replace").splitlines():
             ln = ln.strip()
             if ln.lower() == "[providerservers]":
                 in_ps = True
@@ -236,7 +236,7 @@ async def _rebuild_gamesys_conf(glinkd_count: int) -> None:
     path = Path("/home/glinkd/gamesys.conf")
     if not path.exists():
         return
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8", errors="replace")
     parts = re.split(r'^(?=\[)', content, flags=re.MULTILINE)
     fixed = {}
     for part in parts:
@@ -274,7 +274,7 @@ async def _rebuild_gmserver_conf(glinkd_count: int, path_str: str) -> None:
     path = Path(path_str)
     if not path.exists():
         return
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8", errors="replace")
     parts = re.split(r'^(?=\[)', content, flags=re.MULTILINE)
     fixed = {}
     for part in parts:
@@ -314,7 +314,7 @@ async def _rebuild_start_sh(glinkd_count: int) -> None:
     path = Path("/home/start.sh")
     if not path.exists():
         return
-    lines = path.read_text().splitlines(keepends=True)
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True)
     new_lines = []
     insert_pos = None
     for line in lines:
