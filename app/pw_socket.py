@@ -173,11 +173,13 @@ def get_role_base(role_id: int, classes: dict) -> dict | None:
         _, pos = _read_uint32(response, pos)        # create_time
         _, pos = _read_uint32(response, pos)        # lastlogin_time
         forbid_count, pos = _cuint_decode(response, pos)
+        forbid = []
         for _ in range(forbid_count):
-            _, pos = _read_byte(response, pos)
-            _, pos = _read_uint32(response, pos)
-            _, pos = _read_uint32(response, pos)
-            _, pos = _read_ustring(response, pos)
+            f_type, pos = _read_byte(response, pos)
+            f_time, pos = _read_uint32(response, pos)
+            f_createtime, pos = _read_uint32(response, pos)
+            f_reason, pos = _read_ustring(response, pos)
+            forbid.append({"type": f_type, "time": f_time, "createtime": f_createtime, "reason": f_reason})
         _, pos = _read_octets(response, pos)        # extra octets
         _, pos = _read_uint32(response, pos)
         _, pos = _read_uint32(response, pos)
@@ -215,6 +217,7 @@ def get_role_base(role_id: int, classes: dict) -> dict | None:
             "pos_y": round(pos_y, 1),
             "pos_z": round(pos_z, 1),
             "map": world_tag,
+            "forbid": forbid,
         }
     except Exception as e:
         logging.warning("get_role_base parse error for role %d: %s", role_id, e)

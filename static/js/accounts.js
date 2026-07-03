@@ -67,21 +67,6 @@ function RequestUserData(n){
 	}else if ((n==4)||(n==5)){
 		//4 Add GM, 5 Del game rank
 		dArr=[uid];
-	}else if (n==6){
-		var d1 = document.getElementById('BanRoleId').value;
-		var d2 = document.getElementById('RoleBanType').value;
-		var d3 = document.getElementById('BanRoleGM').value;
-		var d4 = document.getElementById('BanRoleWhy').value;
-		var d5 = document.getElementById('BanRoleDur').value;
-		var bannerId=1024;
-		dArr=[bannerId, d1, d2, d3, d4, d5];
-	}else if (n==7){
-		var d1 = document.getElementById('BanRoleId').value;
-		var d2 = document.getElementById('RoleBanType').value;
-		var d3 = document.getElementById('BanRoleGM').value;
-		var d4 = document.getElementById('BanRoleWhy').value;
-		var bannerId=1024;
-		dArr=[bannerId, d1, d2, d3, d4];		
 	}else if (n==8){
 		dArr=[uid];	
 	}else if (n==9){
@@ -102,9 +87,46 @@ function RequestUserData(n){
 		}
 	}
 	if ((n>1)&&(n<12)&&(dArr.length>0)){
-		if (n==7){n=6;}
 		SendDataWithAjax((n+1), dArr);
 	}
+}
+
+var BanDialogTargetId = 0;
+
+function OpenBanDialog(roleId, roleName){
+	BanDialogTargetId = roleId;
+	document.getElementById('BanDialogChar').textContent = roleName+' ['+roleId+']';
+	document.getElementById('BanDlgType').selectedIndex = 0;
+	document.getElementById('BanDlgDur').value = '3600';
+	document.getElementById('BanDlgReason').value = 'Take a rest!';
+	document.getElementById('BanDialog').style.display = 'flex';
+}
+
+function CloseBanDialog(){
+	document.getElementById('BanDialog').style.display = 'none';
+}
+
+function ConfirmBanDialog(){
+	var banType = document.getElementById('BanDlgType').value;
+	var dur = parseInt(document.getElementById('BanDlgDur').value,10)||0;
+	var reason = document.getElementById('BanDlgReason').value;
+	if (dur < 5){
+		alert('Duration must be at least 5 seconds.');
+		return;
+	}
+	CloseBanDialog();
+	SendBanRequest(BanDialogTargetId, banType, dur, reason);
+}
+
+function UnbanCharacter(roleId, banType){
+	if (!confirm('Unban this character now?')) return;
+	SendBanRequest(roleId, banType, 5, 'Unban');
+}
+
+function SendBanRequest(targetId, banType, duration, reason){
+	var bannerId = 1024;
+	var gmId = -1;
+	SendDataWithAjax(7, [bannerId, targetId, banType, gmId, reason, duration]);
 }
 
 function ToggleGM(){
@@ -363,7 +385,8 @@ function RenderChars(chars, usrank){
 	var charc = Object.keys(chars).length;
 	document.getElementById('AccInfoCI').innerHTML = charc;
 	if (charc > 0){
-		var headers = usrank > 0 ? ['Name [ID]','Class (Lvl)','Coordinates'] : ['Name','Class (Lvl)'];
+		var headers = usrank > 0 ? ['Name [ID]','Class (Lvl)','Coordinates','Ban Status','Actions'] : ['Name','Class (Lvl)'];
+		var banTypeLabel = {1:'Account',2:'Chat (Acct)',3:'Chat',4:'Role'};
 		var hrow = table.insertRow(-1);
 		headers.forEach(function(h){
 			var th = document.createElement('th'); th.textContent = h; hrow.appendChild(th);
@@ -390,6 +413,35 @@ function RenderChars(chars, usrank){
 				cell.innerHTML = role.rolepath+' '+role.roleclass+' ('+role.rolelevel+')';
 				cell = row.insertCell(2);
 				cell.innerHTML = 'x: '+role.posX+' y: '+role.posY+' z: '+role.posZ+' ['+role.map+']';
+
+				var forbid = role.forbid || [];
+				var isBanned = forbid.length > 0;
+				cell = row.insertCell(3);
+				if (isBanned){
+					var f = forbid[0];
+					var label = banTypeLabel[f.type] || ('Type '+f.type);
+					var expText = '';
+					if (f.time > 0 && f.createtime > 0){
+						expText = 'until '+new Date((f.createtime+f.time)*1000).toLocaleString();
+					}
+					cell.innerHTML = '<span style="color:#f87171;font-weight:600;" title="'+(f.reason||'').replace(/"/g,'&quot;')+'">BANNED — '+label+'</span>'
+						+ (expText ? '<br><span style="color:#64748b;font-size:10px;">'+expText+'</span>' : '');
+				}else{
+					cell.innerHTML = '<span style="color:#4ade80;">Clear</span>';
+				}
+
+				cell = row.insertCell(4);
+				var actBtn = document.createElement('button');
+				if (isBanned){
+					actBtn.textContent = 'Unban';
+					actBtn.className = 'px-2 py-0.5 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition';
+					actBtn.onclick = (function(rid, ftype){ return function(){ UnbanCharacter(rid, ftype); }; })(role.roleid, forbid[0].type);
+				}else{
+					actBtn.textContent = 'Ban';
+					actBtn.className = 'px-2 py-0.5 bg-red-700 hover:bg-red-600 border border-red-600 rounded text-xs text-white transition';
+					actBtn.onclick = (function(rid, rname){ return function(){ OpenBanDialog(rid, rname); }; })(role.roleid, role.rolename);
+				}
+				cell.appendChild(actBtn);
 			} else {
 				cell = row.insertCell(0);
 				cell.innerHTML = '<b>'+role.rolename+'</b>';
@@ -401,7 +453,7 @@ function RenderChars(chars, usrank){
 		var row = table.insertRow(-1);
 		var cell = row.insertCell(0);
 		cell.style.textAlign = 'center';
-		cell.colSpan = '3';
+		cell.colSpan = '5';
 		cell.innerHTML = '<i>... You have no character ...</i>';
 	}
 }

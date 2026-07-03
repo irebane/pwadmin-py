@@ -105,6 +105,7 @@ async def load_chars_v2(user_id: int) -> dict:
             "posY": base["pos_y"] if base else 0,
             "posZ": base["pos_z"] if base else 0,
             "map": base["map"] if base else 0,
+            "forbid": base["forbid"] if base else [],
         }
     return chars
 
@@ -231,8 +232,27 @@ async def account_tool_v2(db: AsyncSession, tool: int, params: dict, is_admin: b
         return _tool_resp(success=f"GM rank removed from {uid}.",
                           reloaduserdata="1", reloaduserlist="1")
 
-    elif tool == 6:  # ban/unban character (requires live game server)
-        return _tool_resp(error="Character ban requires the game server to be online. Use the game GM tools.")
+    elif tool == 6:  # ban character (role-level ban via gdeliveryd; "unban" reuses this with a short duration)
+        from app.services.ban import send_ban
+
+        target_id = int(params.get("targetid", 0))
+        ban_type = int(params.get("bantype", 0))
+        gm_id = int(params.get("gmid", -1))
+        reason = params.get("banreason") or ""
+        try:
+            duration = int(params.get("bandur") or 0)
+        except (TypeError, ValueError):
+            duration = 0
+        if duration < 5:
+            duration = 5
+
+        if target_id < 1 or ban_type not in (1, 2, 3, 4):
+            return _tool_resp(error="Use the correct settings!")
+
+        ok, err = await send_ban(settings.lan_ip, 29100, gm_id, target_id, ban_type, duration, reason)
+        if not ok:
+            return _tool_resp(error=err)
+        return _tool_resp(success="Ban action executed", reloaduserdata="1")
 
     elif tool == 8:  # delete account
         if uid < 1:
