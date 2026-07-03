@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.deps import get_db, get_current_user, require_admin
 from app.services.accounts import (
-    load_account_v2, load_chars_v2, list_accounts_v2, account_tool_v2, account_save_v2,
+    load_account_v2, load_chars_v2, load_deleted_chars_v2, list_accounts_v2, account_tool_v2, account_save_v2,
 )
 from pydantic import BaseModel
 
@@ -39,6 +39,15 @@ async def account_chars(
     if not user.get("is_admin") and user.get("id") != body.id:
         return JSONResponse({"error": "Unauthorized."})
     chars = await load_chars_v2(body.id)
+    return JSONResponse(chars)
+
+
+@router.post("/chars/deleted")
+async def account_deleted_chars(
+    body: LoadBody,
+    user: dict = Depends(require_admin),
+):
+    chars = await load_deleted_chars_v2(body.id)
     return JSONResponse(chars)
 
 

@@ -425,6 +425,14 @@ function RenderChars(chars, usrank){
 				anchor.innerHTML = '<b>'+role.rolename+'</b> ['+role.roleid+']';
 				anchor.onclick = (function(d){return function(){alert(d);};})(roleData);
 				cell.appendChild(anchor);
+				if (role.deleteTime > 0){
+					var delBadge = document.createElement('div');
+					var delDate = new Date(role.deleteTime * 1000).toLocaleString();
+					var isPast = role.deleteTime * 1000 < Date.now();
+					delBadge.style.cssText = 'color:#fb923c;font-size:10px;';
+					delBadge.textContent = (isPast ? 'Deletion scheduled ' : 'Pending deletion — ') + delDate;
+					cell.appendChild(delBadge);
+				}
 				cell = row.insertCell(1);
 				cell.innerHTML = role.rolepath+' '+role.roleclass+' ('+role.rolelevel+')';
 				cell = row.insertCell(2);
@@ -472,6 +480,65 @@ function RenderChars(chars, usrank){
 		cell.colSpan = '5';
 		cell.innerHTML = '<i>... You have no character ...</i>';
 	}
+	var delBtn = document.getElementById('ShowDeletedCharsBtn');
+	var delPanel = document.getElementById('DeletedCharsPanel');
+	if (delBtn){
+		delBtn.style.display = usrank > 0 ? '' : 'none';
+		delBtn.textContent = 'Show removed characters';
+	}
+	if (delPanel){ delPanel.style.display = 'none'; }
+}
+
+function ShowDeletedChars(){
+	var panel = document.getElementById('DeletedCharsPanel');
+	var table = document.getElementById('DeletedCharList');
+	var uid = parseInt(document.getElementById('CurUId').value, 10) || 0;
+	if (!panel || !table || !uid) return;
+	if (panel.style.display !== 'none'){ panel.style.display = 'none'; return; }
+	table.innerHTML = '<tr><td style="color:#64748b;font-style:italic;padding:6px 0;" colspan="3">Loading removed characters…</td></tr>';
+	panel.style.display = '';
+	var csrf = document.cookie.match(/csrf_token=([^;]+)/);
+	csrf = csrf ? csrf[1] : '';
+	fetch('/api/accounts/chars/deleted', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({id:uid})})
+		.then(function(r){ return r.json(); })
+		.then(RenderDeletedChars)
+		.catch(function(){
+			table.innerHTML = '<tr><td style="color:#ef4444;font-style:italic;" colspan="3">Failed to load removed characters.</td></tr>';
+		});
+}
+
+function RenderDeletedChars(chars){
+	var table = document.getElementById('DeletedCharList');
+	if (!table) return;
+	table.innerHTML = '';
+	var keys = Object.keys(chars);
+	if (keys.length === 0){
+		var row = table.insertRow(-1);
+		var cell = row.insertCell(0);
+		cell.style.textAlign = 'center';
+		cell.className = 'text-slate-600 italic py-1';
+		cell.colSpan = '3';
+		cell.textContent = 'No removed characters found.';
+		return;
+	}
+	var hrow = table.insertRow(-1);
+	['Name [ID]', 'Class (Lvl)', 'Removed'].forEach(function(h){
+		var th = document.createElement('th'); th.textContent = h; th.className = 'text-left'; hrow.appendChild(th);
+	});
+	keys.forEach(function(k){
+		var role = chars[k];
+		var row = table.insertRow(-1);
+		var cell = row.insertCell(0);
+		cell.innerHTML = '<b>'+role.rolename+'</b> ['+role.roleid+']';
+		cell = row.insertCell(1);
+		cell.innerHTML = role.rolepath+' '+role.roleclass+' ('+role.rolelevel+')';
+		cell = row.insertCell(2);
+		if (role.deleteTime > 0){
+			cell.innerHTML = new Date(role.deleteTime * 1000).toLocaleString()+' <span class="text-slate-500 text-[10px]">(status '+role.status+')</span>';
+		}else{
+			cell.innerHTML = '<span class="text-slate-500 text-[10px]">not in account index (status '+role.status+')</span>';
+		}
+	});
 }
 
 function EditUserList(userData){

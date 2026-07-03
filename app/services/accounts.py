@@ -111,6 +111,43 @@ async def load_chars_v2(user_id: int) -> dict:
             "posZ": base["pos_z"] if base else 0,
             "map": base["map"] if base else 0,
             "forbid": base["forbid"] if base else [],
+            "status": base["status"] if base else 0,
+            "deleteTime": base["delete_time"] if base else 0,
+        }
+        i += 1
+    return chars
+
+
+async def load_deleted_chars_v2(user_id: int) -> dict:
+    """
+    Characters that gamedbd's account->role index no longer lists for this
+    account at all (fully dropped, not just pending-deletion) — recovered from
+    gdeliveryd's createrole-success log and verified against the character
+    record's own owner_uid. Read-only: nothing here is restorable yet.
+    """
+    import asyncio
+    from app.pw_socket import get_user_roles, get_role_base, find_roles_from_log
+    classes = settings.pw_classes_dict
+    loop = asyncio.get_running_loop()
+    active_ids = {r["role_id"] for r in await loop.run_in_executor(None, get_user_roles, user_id)}
+    all_ids = await loop.run_in_executor(None, find_roles_from_log, user_id)
+
+    chars = {}
+    i = 0
+    for role_id in all_ids:
+        if role_id in active_ids:
+            continue
+        base = await loop.run_in_executor(None, get_role_base, role_id, classes)
+        if not base or base.get("owner_uid") != user_id:
+            continue
+        chars[i] = {
+            "roleid": role_id,
+            "rolename": base["role_name"],
+            "roleclass": base["role_class"],
+            "rolepath": base["role_path"],
+            "rolelevel": base["role_level"],
+            "status": base["status"],
+            "deleteTime": base["delete_time"],
         }
         i += 1
     return chars
