@@ -107,6 +107,26 @@ function RequestUserData(n){
 	}
 }
 
+function ToggleGM(){
+	var gmBtn = document.getElementById('GmToggleBtn');
+	var isGm = gmBtn && gmBtn.getAttribute('data-isgm')=='1';
+	RequestUserData(isGm ? 5 : 4);
+}
+
+function UpdateGmToggleBtn(urank){
+	var gmBtn = document.getElementById('GmToggleBtn');
+	if (!gmBtn) return;
+	if (urank > 0){
+		gmBtn.textContent = 'Rem. GM';
+		gmBtn.className = 'px-2 py-1.5 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition';
+		gmBtn.setAttribute('data-isgm','1');
+	}else{
+		gmBtn.textContent = 'Add GM';
+		gmBtn.className = 'px-2 py-1.5 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white transition';
+		gmBtn.setAttribute('data-isgm','0');
+	}
+}
+
 function UserSearch(){
 	var txt = document.getElementById('SearchUser').value;
 	var sType = 0;
@@ -261,7 +281,8 @@ function EditUserData(userData){
 			document.getElementById('dob-year').selectedIndex=LYear;
 			document.getElementById('dob-month').selectedIndex=LMonth;
 			document.getElementById('dob-day').selectedIndex=LDay;
-			document.getElementById('mstat').selectedIndex = urank;	
+			document.getElementById('mstat').selectedIndex = urank;
+			UpdateGmToggleBtn(urank);
 		}
 		if (Object.keys(userD[2]).length>2){
 			var lastlog=userD[2]["lastlogin"];
