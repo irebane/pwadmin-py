@@ -239,6 +239,8 @@ async def _rebuild_gamesys_conf(glinkd_count: int) -> None:
     if not path.exists():
         return
     content = path.read_text(encoding="utf-8", errors="replace")
+    version_match = re.search(r'^version\s*=\s*(\d+)', content, re.MULTILINE)
+    version = version_match.group(1) if version_match else "10505"
     parts = re.split(r'^(?=\[)', content, flags=re.MULTILINE)
     fixed = {}
     for part in parts:
@@ -255,14 +257,14 @@ async def _rebuild_gamesys_conf(glinkd_count: int) -> None:
             "tcp_nodelay\t\t=\t0\nlisten_backlog\t=\t10\naccumulate\t\t=\t131072\nmax_users\t\t=\t3000\n"
             "halflogin_users\t=\t6000\nsender_interval\t=\t200000\naccumu_packets\t=\t32768\n"
             "mtrace\t\t\t=\t/tmp/m_trace.link\ncompress\t\t=\t0\nclose_discard\t=\t1\n"
-            "urgency_support\t=\t1\nversion=10402\n\n"
+            f"urgency_support\t=\t1\nversion={version}\n\n"
         )
     if "GDeliveryClient" in fixed:
         gs_out += fixed["GDeliveryClient"] + "\n\n"
     for n in range(1, glinkd_count + 1):
         p = 29300 + n
         gs_out += (
-            f"[GProviderServer{n}]\ntype\t\t\t=\ttcp\nport\t\t\t=\t{p}\naddress\t\t\t=\t0.0.0.0\n"
+            f"[GProviderServer{n}]\ntype\t\t\t=\ttcp\nport\t\t\t=\t{p}\naddress\t\t\t=\t127.0.0.1\n"
             "so_sndbuf\t\t=\t65536\nso_rcvbuf\t\t=\t65536\nibuffermax\t\t=\t1048576\nobuffermax\t\t=\t1048576\n"
             "tcp_nodelay\t\t=\t0\naccumulate\t\t=\t268435456\n\n"
         )
