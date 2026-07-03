@@ -7,6 +7,8 @@
   <link rel="icon" type="image/png" href="/static/images/pwicon3.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Tailwind's text-* utilities are rem-based, so bumping the root size scales all of them proportionally. */
+    html { font-size: 112.5%; }
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
