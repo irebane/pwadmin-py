@@ -126,24 +126,32 @@ async def load_deleted_chars_v2(user_id: int) -> dict:
     record's own owner_uid. Read-only: nothing here is restorable yet.
     """
     import asyncio
-    from app.pw_socket import get_user_roles, get_role_base, find_roles_from_log
+    from app.pw_socket import (
+        get_user_roles, get_role_base, find_roles_from_log,
+        get_role_creation_info, resolve_class_name,
+    )
     classes = settings.pw_classes_dict
     loop = asyncio.get_running_loop()
     active_ids = {r["role_id"] for r in await loop.run_in_executor(None, get_user_roles, user_id)}
     all_ids = await loop.run_in_executor(None, find_roles_from_log, user_id)
+    creation_info = await loop.run_in_executor(None, get_role_creation_info, user_id)
 
     chars = {}
     i = 0
     for role_id in all_ids:
         if role_id in active_ids:
             continue
+        created = creation_info.get(role_id)
+        created_class = resolve_class_name(created["occupation"], classes) if created else ""
         base = await loop.run_in_executor(None, get_role_base, role_id, classes)
         if base is None:
             # key itself is gone from gamedbd — nothing left to inspect but the
-            # log still proves it once existed.
+            # log still proves it once existed, including what it was.
             chars[i] = {
                 "roleid": role_id, "rolename": "(purged — no data remains)",
-                "roleclass": "", "rolepath": "", "rolelevel": 0,
+                "roleclass": created_class, "rolepath": "", "rolelevel": 0,
+                "gender": created["gender"] if created else None,
+                "createdAt": created["created_at"] if created else None,
                 "status": None, "deleteTime": None, "removedReason": "purged",
             }
             i += 1
@@ -156,9 +164,11 @@ async def load_deleted_chars_v2(user_id: int) -> dict:
         chars[i] = {
             "roleid": role_id,
             "rolename": base["role_name"] if not wiped else "(data cleared)",
-            "roleclass": base["role_class"] if not wiped else "",
+            "roleclass": base["role_class"] if not wiped else created_class,
             "rolepath": base["role_path"] if not wiped else "",
             "rolelevel": base["role_level"] if not wiped else 0,
+            "gender": created["gender"] if (wiped and created) else None,
+            "createdAt": created["created_at"] if created else None,
             "status": base["status"],
             "deleteTime": base["delete_time"],
             "removedReason": "wiped" if wiped else "dropped from index",

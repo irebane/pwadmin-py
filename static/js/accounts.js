@@ -517,12 +517,12 @@ function RenderDeletedChars(chars){
 		var cell = row.insertCell(0);
 		cell.style.textAlign = 'center';
 		cell.className = 'text-slate-600 italic py-1';
-		cell.colSpan = '3';
+		cell.colSpan = '4';
 		cell.textContent = 'No removed characters found.';
 		return;
 	}
 	var hrow = table.insertRow(-1);
-	['Name [ID]', 'Class (Lvl)', 'Removed'].forEach(function(h){
+	['Name [ID]', 'Class (Lvl)', 'Created', 'Removed'].forEach(function(h){
 		var th = document.createElement('th'); th.textContent = h; th.className = 'text-left'; hrow.appendChild(th);
 	});
 	keys.forEach(function(k){
@@ -531,8 +531,11 @@ function RenderDeletedChars(chars){
 		var cell = row.insertCell(0);
 		cell.innerHTML = '<b>'+role.rolename+'</b> ['+role.roleid+']';
 		cell = row.insertCell(1);
-		cell.innerHTML = role.rolepath+' '+role.roleclass+' ('+role.rolelevel+')';
+		var genderTxt = role.gender === 0 ? ' ♂' : (role.gender === 1 ? ' ♀' : '');
+		cell.innerHTML = role.rolepath+' '+role.roleclass+genderTxt+' ('+role.rolelevel+')';
 		cell = row.insertCell(2);
+		cell.innerHTML = '<span class="text-slate-500 text-[10px]">'+(role.createdAt || '—')+'</span>';
+		cell = row.insertCell(3);
 		if (role.removedReason === 'purged'){
 			cell.innerHTML = '<span class="text-slate-500 text-[10px]">purged — no data remains</span>';
 		}else if (role.removedReason === 'wiped'){

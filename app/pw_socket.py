@@ -14,6 +14,9 @@ GAMEDBD_PORT = 29400
 TIMEOUT = 3
 
 _CREATEROLE_RE = re.compile(r"formatlog:createrole-success:userid=(\d+):account=[^:]*:roleid=(\d+):")
+_CREATEROLE_DETAIL_RE = re.compile(
+    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).*formatlog:createrole:userid=(\d+):roleid=(\d+):occupation=(\d+):gender=(\d+)"
+)
 
 # ── CUInt (variable-length big-endian integer) ───────────────────────────────
 
@@ -124,6 +127,11 @@ def _cls2class(cls: int) -> int:
     return cls + 1
 
 
+def resolve_class_name(occupation: int, classes: dict) -> str:
+    """Same cls2class port applied to a role's creation-time occupation id."""
+    return classes.get(_cls2class(occupation), f"Class{occupation}")
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def find_roles_from_log(user_id: int) -> list[int]:
@@ -147,6 +155,32 @@ def find_roles_from_log(user_id: int) -> list[int]:
         logging.warning("find_roles_from_log read error: %s", e)
         return []
     return sorted(role_ids)
+
+
+def get_role_creation_info(user_id: int) -> dict[int, dict]:
+    """
+    Parse gamedbd's createrole log line (creation time, occupation, gender) for
+    a user's characters. This is the only place that data survives once
+    gamedbd wipes a deleted role's record in place (see load_deleted_chars_v2).
+    """
+    path = Path(settings.formatlog_path)
+    if not path.is_file():
+        return {}
+    info = {}
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                m = _CREATEROLE_DETAIL_RE.search(line)
+                if m and int(m.group(2)) == user_id:
+                    info[int(m.group(3))] = {
+                        "created_at": m.group(1),
+                        "occupation": int(m.group(4)),
+                        "gender": int(m.group(5)),
+                    }
+    except OSError as e:
+        logging.warning("get_role_creation_info read error: %s", e)
+        return {}
+    return info
 
 
 def get_user_roles(account_aid: int) -> list[dict]:
