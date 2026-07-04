@@ -31,12 +31,18 @@ var itmCol = [];
 var TempItemData;
 var InherentAddons = {};	// letter (W/A/J) -> last-fetched list of base-template addons
 var InherentAddonsReqItem = {};	// letter -> itemId of the most recently *requested* load, to drop stale responses
-var InherentAddonsAutoAdded = {};	// letter -> itemId whose bonuses were already auto-added, to avoid re-adding duplicates on re-select
 
 // ── Inherent (base-template) addons — the item's own "Strength +3~4" style ─────
 // bonus stats, resolved server-side from elements.data. These are separate from
 // the admin-picked Addons list above, and are auto-added (editable, removable)
-// the first time a given item is selected.
+// every time an item is selected. Entries created here are tagged with a
+// trailing "#INH" marker (see AddResolvedAddon) so ClearInherentManagedAddons()
+// can remove exactly the *previous* item's inherent bonuses — never the ones
+// added through the plain "Addons:" dropdown, which persist across item
+// switches like before — before adding the newly-selected item's bonuses.
+// Without this, switching items would keep piling addons on top of each other
+// until the 12-addon cap blocked the tool, and worse, could send a mix of two
+// different items' inherent bonuses in one octet.
 
 function LoadInherentAddons(cat, itemId){
 	var letter = (cat=="1") ? "W" : (cat=="2") ? "A" : (cat=="3") ? "J" : null;
@@ -46,22 +52,43 @@ function LoadInherentAddons(cat, itemId){
 	InherentAddons[letter] = [];
 	InherentAddonsReqItem[letter] = itemId;
 	div.innerHTML = "";
-	if (!itemId){ return; }
+	if (!itemId){
+		ClearInherentManagedAddons();
+		return;
+	}
 	fetch('/api/items/'+itemId+'/addons')
 		.then(function(r){ return r.ok ? r.json() : Promise.reject(new Error("HTTP "+r.status)); })
 		.then(function(list){
 			if (InherentAddonsReqItem[letter] !== itemId){ return; }	// a newer selection superseded this response
 			InherentAddons[letter] = list || [];
 			RenderInherentAddons(letter);
-			if (list.length > 0 && InherentAddonsAutoAdded[letter] !== itemId){
-				InherentAddonsAutoAdded[letter] = itemId;
+			ClearInherentManagedAddons();
+			if (list.length > 0){
 				AddAllInherentAddons(letter);
 			}
 		})
 		.catch(function(err){
 			if (InherentAddonsReqItem[letter] !== itemId){ return; }
 			div.innerHTML = "<div class='text-red-400'>inherent-addon load failed: "+err+"</div>";
+			ClearInherentManagedAddons();
 		});
+}
+
+// Removes every Addons[] entry tagged "#INH" (added by AddResolvedAddon), then
+// compacts the array and renumbers AddInd. Leaves manually-picked addons intact.
+function ClearInherentManagedAddons(){
+	var kept = [];
+	for (var i = 1; i <= AddInd; i++){
+		var parts = Addons[i].split("#");
+		if (!(parts.length > 9 && parts[9] === "INH")){
+			kept.push(Addons[i]);
+		}
+	}
+	AddInd = kept.length;
+	for (var i = 0; i < kept.length; i++){
+		Addons[i+1] = kept[i];
+	}
+	RefreshAddonList();
 }
 
 function RenderInherentAddons(letter){
@@ -119,7 +146,7 @@ function AddResolvedAddon(letter, idx){
 	AddInd++;
 	var hex = DectoRevHex(a.addon_id, 8, 2) + DectoRevHex(amount, 8, 0);
 	var txt = (StatName[a.stat_id] != null) ? GetAddonString(a.stat_id, amount) : ("Addon["+a.addon_id+"]: "+amount);
-	Addons[AddInd] = hex+"#"+txt+"#H#WAJBM#"+amount+"#0#0#"+a.stat_id+"#"+a.addon_id;
+	Addons[AddInd] = hex+"#"+txt+"#H#WAJBM#"+amount+"#0#0#"+a.stat_id+"#"+a.addon_id+"#INH";
 	RefreshAddonList();
 }
 
@@ -138,9 +165,10 @@ function UpdateAddonAmount(i){
 	}
 	var statId = parseInt(parts[7], 10);
 	var addonId = parseInt(parts[8], 10);
+	var isInherent = parts.length > 9 && parts[9] === "INH";
 	var hex = DectoRevHex(addonId, 8, 2) + DectoRevHex(amount, 8, 0);
 	var txt = (StatName[statId] != null) ? GetAddonString(statId, amount) : ("Addon["+addonId+"]: "+amount);
-	Addons[i] = hex+"#"+txt+"#H#"+parts[3]+"#"+amount+"#0#0#"+statId+"#"+addonId;
+	Addons[i] = hex+"#"+txt+"#H#"+parts[3]+"#"+amount+"#0#0#"+statId+"#"+addonId+(isInherent ? "#INH" : "");
 	RefreshAddonList();
 }
 
