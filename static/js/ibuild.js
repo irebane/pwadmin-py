@@ -31,10 +31,12 @@ var itmCol = [];
 var TempItemData;
 var InherentAddons = {};	// letter (W/A/J) -> last-fetched list of base-template addons
 var InherentAddonsReqItem = {};	// letter -> itemId of the most recently *requested* load, to drop stale responses
+var InherentAddonsAutoAdded = {};	// letter -> itemId whose bonuses were already auto-added, to avoid re-adding duplicates on re-select
 
 // ── Inherent (base-template) addons — the item's own "Strength +3~4" style ─────
 // bonus stats, resolved server-side from elements.data. These are separate from
-// the admin-picked Addons list above and are always empty until added.
+// the admin-picked Addons list above, and are auto-added (editable, removable)
+// the first time a given item is selected.
 
 function LoadInherentAddons(cat, itemId){
 	var letter = (cat=="1") ? "W" : (cat=="2") ? "A" : (cat=="3") ? "J" : null;
@@ -51,6 +53,10 @@ function LoadInherentAddons(cat, itemId){
 			if (InherentAddonsReqItem[letter] !== itemId){ return; }	// a newer selection superseded this response
 			InherentAddons[letter] = list || [];
 			RenderInherentAddons(letter);
+			if (list.length > 0 && InherentAddonsAutoAdded[letter] !== itemId){
+				InherentAddonsAutoAdded[letter] = itemId;
+				AddAllInherentAddons(letter);
+			}
 		})
 		.catch(function(err){
 			if (InherentAddonsReqItem[letter] !== itemId){ return; }
@@ -67,7 +73,7 @@ function RenderInherentAddons(letter){
 			div.innerHTML = "";
 			return;
 		}
-		var html = "<div class='text-amber-300 mb-1'>Base template bonus (this item always rolls these when spawned normally) — edit the value, then add:</div>";
+		var html = "<div class='text-amber-300 mb-1'>Base template bonus (auto-added below at max value — edit here and re-add, or edit directly in the Addons list):</div>";
 		for (var i = 0; i < list.length; i++){
 			var a = list[i];
 			var label = (StatName[a.stat_id] != null) ? GetAddonString(a.stat_id, a.max) : ("Addon ["+a.addon_id+"]");
@@ -95,7 +101,7 @@ function AddAllInherentAddons(letter){
 
 // Reads the (editable) amount input for inherent-addon row `idx` of `letter` and
 // adds it to the same Addons[] list the manual "Addons:" picker above uses — so
-// removal (X button) works exactly like any other addon already does.
+// removal (X button) and in-place editing work exactly like any other addon.
 function AddResolvedAddon(letter, idx){
 	var list = InherentAddons[letter] || [];
 	var a = list[idx];
@@ -113,7 +119,28 @@ function AddResolvedAddon(letter, idx){
 	AddInd++;
 	var hex = DectoRevHex(a.addon_id, 8, 2) + DectoRevHex(amount, 8, 0);
 	var txt = (StatName[a.stat_id] != null) ? GetAddonString(a.stat_id, amount) : ("Addon["+a.addon_id+"]: "+amount);
-	Addons[AddInd] = hex+"#"+txt+"#H#WAJBM#"+amount+"#0#0";
+	Addons[AddInd] = hex+"#"+txt+"#H#WAJBM#"+amount+"#0#0#"+a.stat_id+"#"+a.addon_id;
+	RefreshAddonList();
+}
+
+// Rewrites Addons[i] with a new amount, reusing the stat/addon id stashed in the
+// entry's trailing fields (index 7/8) by AddResolvedAddon()/AddNewAddon(). Entries
+// without those fields (Special-effect/Rune addons) aren't editable this way —
+// remove and re-add instead.
+function UpdateAddonAmount(i){
+	var parts = Addons[i].split("#");
+	if (parts.length < 9 || parts[7] === "" || parts[8] === ""){ return; }
+	var inp = document.getElementById('AddonEditAmt'+i);
+	var amount = parseInt(inp ? inp.value : NaN, 10);
+	if (isNaN(amount)){
+		alert("Write how much bonus you want!");
+		return;
+	}
+	var statId = parseInt(parts[7], 10);
+	var addonId = parseInt(parts[8], 10);
+	var hex = DectoRevHex(addonId, 8, 2) + DectoRevHex(amount, 8, 0);
+	var txt = (StatName[statId] != null) ? GetAddonString(statId, amount) : ("Addon["+addonId+"]: "+amount);
+	Addons[i] = hex+"#"+txt+"#H#"+parts[3]+"#"+amount+"#0#0#"+statId+"#"+addonId;
 	RefreshAddonList();
 }
 
@@ -207,9 +234,15 @@ function RefreshAddonList(){
 	var html = "";
 	for (i = 1; i <= AddInd; i++) {
 		ADataArr = Addons[i].split("#");
-		html += "<div class='flex justify-between items-center py-0.5'><span>"+ADataArr[1]+"</span>"+
-			"<a href='javascript:void(0);' onclick='RemoveAddonFromList("+i+");'>"+
-			"<button class='px-2 py-0.5 bg-red-700 hover:bg-red-600 border border-red-600 rounded text-xs text-white'>X</button></a></div>";
+		var editable = ADataArr.length > 8 && ADataArr[7] !== "" && ADataArr[8] !== "";
+		html += "<div class='flex justify-between items-center py-0.5'><span>"+ADataArr[1]+"</span><span class='flex items-center gap-1'>";
+		if (editable){
+			html += "<input type='text' maxlength='5' id='AddonEditAmt"+i+"' value='"+ADataArr[4]+"' class='w-[45px] text-center'> "+
+				"<a href='javascript:void(0);' onclick='UpdateAddonAmount("+i+");'>"+
+				"<button class='px-2 py-0.5 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white'>Update</button></a> ";
+		}
+		html += "<a href='javascript:void(0);' onclick='RemoveAddonFromList("+i+");'>"+
+			"<button class='px-2 py-0.5 bg-red-700 hover:bg-red-600 border border-red-600 rounded text-xs text-white'>X</button></a></span></div>";
 	}
 	div.innerHTML = html;
 }
@@ -340,7 +373,10 @@ function AddNewAddon (){
 					myArr[1]="Addon["+aId+"]: "+AAAmount;
 				}
 			}
-			Addons[AddInd] = myArr[0]+RTH+"#"+RTxt+myArr[1]+"#"+myArr[2]+"#"+myArr[3]+"#"+AAmount+"#"+AType+"#"+RuneDur;
+			// Trailing statId/addonId fields let UpdateAddonAmount() edit this entry
+			// in place later — only safe for plain integer (H), non-rune addons.
+			var editFields = (myArr[2] == "H" && AType == 0) ? ("#"+aId+"#"+skillId) : "##";
+			Addons[AddInd] = myArr[0]+RTH+"#"+RTxt+myArr[1]+"#"+myArr[2]+"#"+myArr[3]+"#"+AAmount+"#"+AType+"#"+RuneDur+editFields;
 			RefreshAddonList();
 		}else{
 			alert("Too much addon...");

@@ -539,6 +539,27 @@ _ADDON_NAME_RE = re.compile(r'^A_([A-Z]+)(\d+)$')
 
 _GEAR_ESSENCE_TABLES = ("004 - WEAPON_ESSENCE", "007 - ARMOR_ESSENCE", "010 - DECORATION_ESSENCE")
 
+# Stats whose octet amount isn't a 1:1 copy of the elements.data param — the client
+# displays them as (raw_param / UNIT_SCALE[stat_id]), e.g. Interval stores the
+# actual game value (0.05) while the octet wants an integer "count of 0.05 units"
+# (StatName's "-." prefix in baseitemdata.js — GetAddonString does val*0.05).
+# Only include stats confirmed to need this; anything else is assumed 1:1.
+_UNIT_SCALE = {28: 0.05}  # stat_id -> elements.data-value-per-octet-unit
+
+
+def _curated_addon_map() -> dict[int, tuple[int, str]]:
+    """addon_id -> (stat_id, type_char) from the hand-curated ADDONS list, H-type
+    only — F-type entries can have per-addon-id scaling quirks (e.g. Max Durability
+    divides by 100) that aren't safe to assume generically."""
+    from app.services.item_data import ADDONS
+    out = {}
+    for a in ADDONS:
+        parts = a.split("#")
+        aid, statid, typ = int(parts[0]), int(parts[1]), parts[2]
+        if typ == "H":
+            out[aid] = (statid, typ)
+    return out
+
 
 def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict[int, list[dict]]:
     """
@@ -635,16 +656,34 @@ def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict
                 for letter, aid in letters.items():
                     quad_resolved[aid] = _BASIC_STAT_LETTERS[letter]
 
+        curated = _curated_addon_map()
+
         out = []
         for aid in addon_ids:
-            if aid not in quad_resolved:
-                continue
             rec = addon_master.get(aid)
             if not rec:
                 continue
-            p1, p2 = rec.get('param1', 0), rec.get('param2', 0)
-            out.append({"addon_id": aid, "stat_id": quad_resolved[aid], "type": "H",
-                        "min": min(p1, p2), "max": max(p1, p2)})
+            if aid in quad_resolved:
+                stat_id = quad_resolved[aid]
+            elif aid in curated:
+                stat_id = curated[aid][0]
+            else:
+                continue
+
+            p1 = rec.get('param1', 0)
+            # num_params==1 means only param1 is meaningful (a fixed value, not a
+            # range) — param2 is unused zero-fill in that case, not a real bound.
+            p2 = rec.get('param2', 0) if rec.get('num_params', 2) >= 2 else p1
+            scale = _UNIT_SCALE.get(stat_id)
+            if scale:
+                # These stats store the actual float game value as int32 bits,
+                # not a plain int (e.g. Interval's 0.05 is a float32 bit pattern).
+                p1 = struct.unpack('<f', struct.pack('<i', p1))[0]
+                p2 = struct.unpack('<f', struct.pack('<i', p2))[0]
+                lo, hi = round(min(p1, p2) / scale), round(max(p1, p2) / scale)
+            else:
+                lo, hi = min(p1, p2), max(p1, p2)
+            out.append({"addon_id": aid, "stat_id": stat_id, "type": "H", "min": lo, "max": hi})
         return out
 
     result: dict[int, list[dict]] = {}
