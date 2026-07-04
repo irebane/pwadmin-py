@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from app.deps import require_admin
-from app.services.items import get_item_name, search_items, _load_items, get_inherent_addons
+from app.services.items import get_item_name, search_items, _load_items, get_inherent_addons, get_item_stats
 from app.services.item_data import get_template_data, build_item_opts
 from app.services.game_client import GameClient, PacketWriter, _cuint_encode, _send_packet
 from app.services.game_mail import send_mail
@@ -70,6 +70,14 @@ async def item_inherent_addons(item_id: int, user: dict = Depends(require_admin)
     Addons list. Frontend renders these with GetAddonString() and can add them at
     max value with one click."""
     return get_inherent_addons(item_id)
+
+
+@router.get("/api/items/{item_id}/stats")
+async def item_base_stats(item_id: int, user: dict = Depends(require_admin)):
+    """Base stats (Level Req, HP/MP, defenses, stat reqs, durability) for this
+    item, resolved from its base template so the item builder can pre-fill
+    those fields instead of leaving them at static defaults."""
+    return get_item_stats(item_id)
 
 
 # ── Character lookup ─────────────────────────────────────────────────────────

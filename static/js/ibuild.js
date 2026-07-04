@@ -74,6 +74,46 @@ function LoadInherentAddons(cat, itemId){
 		});
 }
 
+// ── Item base stats (Level Req, HP/MP, defenses, stat reqs, durability) ─────────
+// These fields have always defaulted to static placeholder values and were never
+// tied to the selected item; this fills them in from the item's real data while
+// leaving them editable, same as the inherent-addon amounts above. "Dodge" is
+// deliberately left alone -- there's no confirmed elements.data field for it.
+var ItemStatFieldMap = {
+	W: { level_req: "Inp_W_LvReq", class_req: "Inp_W_Class",
+	     pdmg_min: "Inp_W_PDmg1", pdmg_max: "Inp_W_PDmg2",
+	     mdmg_min: "Inp_W_MDmg1", mdmg_max: "Inp_W_MDmg2",
+	     str_req: "Inp_W_STR", agi_req: "Inp_W_AGI", int_req: "Inp_W_INT", con_req: "Inp_W_CON",
+	     dur_min: "Inp_W_CurDur", dur_max: "Inp_W_MaxDur" },
+	A: { level_req: "Inp_A_LvReq", class_req: "Inp_A_Class", hp: "Inp_A_HP", mp: "Inp_A_MP", pdef: "Inp_A_PDef",
+	     metal_def: "Inp_A_Metal", wood_def: "Inp_A_Wood", water_def: "Inp_A_Water",
+	     fire_def: "Inp_A_Fire", earth_def: "Inp_A_Earth",
+	     str_req: "Inp_A_STR", agi_req: "Inp_A_AGI", int_req: "Inp_A_INT", con_req: "Inp_A_CON",
+	     dur_min: "Inp_A_CurDur", dur_max: "Inp_A_MaxDur" },
+	J: { level_req: "Inp_J_LvReq", class_req: "Inp_J_Class", pattack: "Inp_J_PAtt", mattack: "Inp_J_MAtt",
+	     pdef: "Inp_J_PDef", metal_def: "Inp_J_Metal", wood_def: "Inp_J_Wood", water_def: "Inp_J_Water",
+	     fire_def: "Inp_J_Fire", earth_def: "Inp_J_Earth",
+	     str_req: "Inp_J_STR", agi_req: "Inp_J_AGI", int_req: "Inp_J_INT", con_req: "Inp_J_CON",
+	     dur_min: "Inp_J_CurDur", dur_max: "Inp_J_MaxDur" }
+};
+
+function LoadItemBaseStats(cat, itemId){
+	var letter = (cat=="1") ? "W" : (cat=="2") ? "A" : (cat=="3") ? "J" : null;
+	if (!letter || !itemId){ return; }
+	fetch('/api/items/'+itemId+'/stats')
+		.then(function(r){ return r.ok ? r.json() : {}; })
+		.then(function(stats){
+			if (!stats){ return; }
+			var map = ItemStatFieldMap[letter];
+			for (var key in map){
+				if (!(key in stats)){ continue; }
+				var el = document.getElementById(map[key]);
+				if (el){ el.value = stats[key]; }
+			}
+		})
+		.catch(function(){});
+}
+
 // Removes every Addons[] entry tagged "#INH" (added by AddResolvedAddon), then
 // compacts the array and renumbers AddInd. Leaves manually-picked addons intact.
 function ClearInherentManagedAddons(){
@@ -2978,6 +3018,7 @@ function getPItemData(e){
 		e1.selectedIndex = myArr[2]-1;
 		ChangeGrade();
 		LoadInherentAddons(cat, parseInt(itmId, 10));
+		LoadItemBaseStats(cat, parseInt(itmId, 10));
 	}else if (cat == "4"){
 		if (sct==1){
 			var reqLv = document.getElementById("Inp_F_ReqLv");

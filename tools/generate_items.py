@@ -694,6 +694,118 @@ def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict
     return result
 
 
+# ── Item base stats (Level Req, HP/MP, defenses, stat reqs, durability) ─────────
+
+# Field name -> normalized key, per essence table. "_high"/"_low" suffixed fields
+# use the "high" (best-case) value, matching how a GM tool should default a
+# freshly-built item; only Durability keeps both bounds (existing UI already has
+# two boxes for it).
+_ARMOR_STAT_FIELDS = {
+    "require_level": "level_req", "character_combo_id": "class_req",
+    "hp_enhance_high": "hp", "mp_enhance_high": "mp",
+    "defence_high": "pdef",
+    "magic_defences_1_high": "metal_def", "magic_defences_2_high": "wood_def",
+    "magic_defences_3_high": "water_def", "magic_defences_4_high": "fire_def",
+    "magic_defences_5_high": "earth_def",
+    "require_strength": "str_req", "require_agility": "agi_req",
+    "require_energy": "int_req", "require_tili": "con_req",
+    "durability_min": "dur_min", "durability_max": "dur_max",
+}
+_WEAPON_STAT_FIELDS = {
+    "require_level": "level_req", "character_combo_id": "class_req",
+    "damage_low": "pdmg_min", "damage_high_max": "pdmg_max",
+    "magic_damage_low": "mdmg_min", "magic_damage_high_max": "mdmg_max",
+    "require_strength": "str_req", "require_agility": "agi_req",
+    "require_energy": "int_req", "require_tili": "con_req",
+    "durability_min": "dur_min", "durability_max": "dur_max",
+}
+_DECO_STAT_FIELDS = {
+    "require_level": "level_req", "character_combo_id": "class_req",
+    "damage_high": "pattack", "magic_damage_high": "mattack",
+    "defence_high": "pdef",
+    "magic_defences_1_high": "metal_def", "magic_defences_2_high": "wood_def",
+    "magic_defences_3_high": "water_def", "magic_defences_4_high": "fire_def",
+    "magic_defences_5_high": "earth_def",
+    "require_strength": "str_req", "require_agility": "agi_req",
+    "require_energy": "int_req", "require_tili": "con_req",
+    "durability_min": "dur_min", "durability_max": "dur_max",
+}
+_STAT_FIELD_MAP = {
+    "004 - WEAPON_ESSENCE": _WEAPON_STAT_FIELDS,
+    "007 - ARMOR_ESSENCE": _ARMOR_STAT_FIELDS,
+    "010 - DECORATION_ESSENCE": _DECO_STAT_FIELDS,
+}
+
+
+def extract_item_stats(elements_path: str, cfg_name: str | None = None) -> dict[int, dict]:
+    """
+    Parse the gear essence tables for each item's base stats (Level Req, HP/MP,
+    defenses, stat requirements, durability) -- the fields the item builder's
+    Weapon/Armor/Jewelry panels show but have never auto-populated from the
+    selected item. Returns {item_id: {normalized_field: value, ...}}.
+    """
+    cfg_path = _resolve_cfg(cfg_name, elements_path)
+    conv_idx, tables = _load_config(cfg_path)
+    data = Path(elements_path).read_bytes()
+    pos = 4  # version (int16) + signature (int16)
+
+    result: dict[int, dict] = {}
+
+    for idx, tbl in enumerate(tables):
+        name = tbl['name']
+        if idx == 0:
+            pos += tbl['offset']
+        elif tbl['offset'] == 'AUTO' and idx == 20:
+            pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len + 4
+        elif tbl['offset'] == 'AUTO' and idx == 100:
+            pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len
+        elif isinstance(tbl['offset'], int) and tbl['offset'] > 0:
+            pos += tbl['offset']
+
+        if idx == conv_idx:
+            pat_pos = data.find(b'facedata\\', pos)
+            list_length = max(pat_pos - pos - 72, 0) if pat_pos != -1 else 0
+            pos += list_length
+            continue
+
+        if pos + 4 > len(data):
+            break
+        count = struct.unpack_from('<i', data, pos)[0]; pos += 4
+        if count < 0 or count > 200_000:
+            break
+        rec_size = tbl['rec_size']
+        if rec_size == 0:
+            continue
+
+        field_map = _STAT_FIELD_MAP.get(name)
+        if not field_map:
+            pos += count * rec_size
+            continue
+
+        fields = tbl['fields']; types = tbl['types']
+        for _ in range(count):
+            rec_start = pos
+            record = {}
+            for fld, ftype in zip(fields, types):
+                v, pos = _read_field(data, pos, ftype)
+                record[fld] = v
+            if pos != rec_start + rec_size:
+                pos = rec_start + rec_size
+
+            item_id = record.get('ID', 0)
+            if not item_id:
+                continue
+            stats = {out_key: record.get(src_key, 0) or 0 for src_key, out_key in field_map.items()}
+            if any(stats.values()):
+                result[item_id] = stats
+
+    return result
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -763,6 +875,12 @@ def main() -> None:
         item_addons = extract_item_addons(el_path, cfg_name=args.config)
         addons_path.write_text(json.dumps(item_addons, ensure_ascii=False, indent=None), encoding="utf-8")
         print(f"Written inherent addons for {len(item_addons):,} items to {addons_path}", file=sys.stderr)
+
+        print("Extracting item base stats (Level Req, HP/MP, defenses, stat reqs, durability)...", file=sys.stderr)
+        stats_path = out_path.parent / "pw_item_stats.json"
+        item_stats = extract_item_stats(el_path, cfg_name=args.config)
+        stats_path.write_text(json.dumps(item_stats, ensure_ascii=False, indent=None), encoding="utf-8")
+        print(f"Written base stats for {len(item_stats):,} items to {stats_path}", file=sys.stderr)
 
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=None), encoding="utf-8")
     total = sum(len(v) for subs in result.values() for v in subs.values())

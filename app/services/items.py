@@ -25,6 +25,20 @@ def get_inherent_addons(item_id: int) -> list[dict]:
     return _load_item_addons().get(str(item_id), [])
 
 
+@lru_cache(maxsize=1)
+def _load_item_stats() -> dict:
+    path = Path("data/pw_item_stats.json")
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def get_item_stats(item_id: int) -> dict:
+    """Return an item's base stats (Level Req, HP/MP, defenses, stat reqs,
+    durability) — see tools/generate_items.py:extract_item_stats."""
+    return _load_item_stats().get(str(item_id), {})
+
+
 @lru_cache(maxsize=None)
 def _build_id_map() -> dict[int, str]:
     """Build item_id → name map from the nested structure."""
