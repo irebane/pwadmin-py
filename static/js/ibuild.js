@@ -30,6 +30,7 @@ var LastItemList = "";
 var itmCol = [];
 var TempItemData;
 var InherentAddons = {};	// letter (W/A/J) -> last-fetched list of base-template addons
+var InherentAddonsReqItem = {};	// letter -> itemId of the most recently *requested* load, to drop stale responses
 
 // ── Inherent (base-template) addons — the item's own "Strength +3~4" style ─────
 // bonus stats, resolved server-side from elements.data. These are separate from
@@ -41,39 +42,48 @@ function LoadInherentAddons(cat, itemId){
 	var div = document.getElementById('InherentAddonsDiv'+letter);
 	if (!div){ return; }
 	InherentAddons[letter] = [];
+	InherentAddonsReqItem[letter] = itemId;
 	div.innerHTML = "";
 	if (!itemId){ return; }
 	fetch('/api/items/'+itemId+'/addons')
-		.then(function(r){ return r.ok ? r.json() : []; })
+		.then(function(r){ return r.ok ? r.json() : Promise.reject(new Error("HTTP "+r.status)); })
 		.then(function(list){
+			if (InherentAddonsReqItem[letter] !== itemId){ return; }	// a newer selection superseded this response
 			InherentAddons[letter] = list || [];
 			RenderInherentAddons(letter);
 		})
-		.catch(function(){ InherentAddons[letter] = []; });
+		.catch(function(err){
+			if (InherentAddonsReqItem[letter] !== itemId){ return; }
+			div.innerHTML = "<div class='text-red-400'>inherent-addon load failed: "+err+"</div>";
+		});
 }
 
 function RenderInherentAddons(letter){
 	var div = document.getElementById('InherentAddonsDiv'+letter);
 	if (!div){ return; }
-	var list = InherentAddons[letter] || [];
-	if (list.length === 0){
-		div.innerHTML = "";
-		return;
+	try{
+		var list = InherentAddons[letter] || [];
+		if (list.length === 0){
+			div.innerHTML = "";
+			return;
+		}
+		var html = "<div class='text-amber-300 mb-1'>Base template bonus (this item always rolls these when spawned normally) — edit the value, then add:</div>";
+		for (var i = 0; i < list.length; i++){
+			var a = list[i];
+			var label = (StatName[a.stat_id] != null) ? GetAddonString(a.stat_id, a.max) : ("Addon ["+a.addon_id+"]");
+			var rangeTxt = (a.min == a.max) ? (""+a.max) : (a.min+"~"+a.max);
+			html += "<div class='flex justify-between items-center py-0.5'><span>"+label+
+				" <span class='text-slate-400'>(range "+rangeTxt+")</span></span>"+
+				"<span><input type='text' maxlength='5' id='InherentAmt"+letter+"_"+i+"' value='"+a.max+"' class='w-[45px] text-center'> "+
+				"<a href='javascript:void(0);' onclick='AddResolvedAddon(\""+letter+"\","+i+");'>"+
+				"<button class='px-2 py-0.5 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white'>+</button></a></span></div>";
+		}
+		html += "<div class='mt-1'><a href='javascript:void(0);' onclick='AddAllInherentAddons(\""+letter+"\");'>"+
+			"<button class='px-2 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white font-semibold'>Add all (at entered values)</button></a></div>";
+		div.innerHTML = html;
+	}catch(err){
+		div.innerHTML = "<div class='text-red-400'>inherent-addon render failed: "+err+"</div>";
 	}
-	var html = "<div class='text-amber-300 mb-1'>Base template bonus (this item always rolls these when spawned normally) — edit the value, then add:</div>";
-	for (var i = 0; i < list.length; i++){
-		var a = list[i];
-		var label = (StatName[a.stat_id] != null) ? GetAddonString(a.stat_id, a.max) : ("Addon ["+a.addon_id+"]");
-		var rangeTxt = (a.min == a.max) ? (""+a.max) : (a.min+"~"+a.max);
-		html += "<div class='flex justify-between items-center py-0.5'><span>"+label+
-			" <span class='text-slate-400'>(range "+rangeTxt+")</span></span>"+
-			"<span><input type='text' maxlength='5' id='InherentAmt"+letter+"_"+i+"' value='"+a.max+"' class='w-[45px] text-center'> "+
-			"<a href='javascript:void(0);' onclick='AddResolvedAddon(\""+letter+"\","+i+");'>"+
-			"<button class='px-2 py-0.5 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white'>+</button></a></span></div>";
-	}
-	html += "<div class='mt-1'><a href='javascript:void(0);' onclick='AddAllInherentAddons(\""+letter+"\");'>"+
-		"<button class='px-2 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white font-semibold'>Add all (at entered values)</button></a></div>";
-	div.innerHTML = html;
 }
 
 function AddAllInherentAddons(letter){
@@ -193,16 +203,15 @@ function RefreshAddonList(){
 	}else{
 		var div = document.getElementById('AddonListDiv'+CIType);
 	}
-	var lnbrk="";
 	var ADataArr = [];
-	div.innerHTML = "";
+	var html = "";
 	for (i = 1; i <= AddInd; i++) {
-		if (i>1){
-			lnbrk ="<br>";
-		}
 		ADataArr = Addons[i].split("#");
-		div.innerHTML = div.innerHTML+lnbrk+"&nbsp;&nbsp;&nbsp;&nbsp;"+ADataArr[1]+"&nbsp;<span style='position: absolute; right:10px;'><a href='javascript:void(0);'  onclick='RemoveAddonFromList("+i+");'><button> X </button></a></span>";
+		html += "<div class='flex justify-between items-center py-0.5'><span>"+ADataArr[1]+"</span>"+
+			"<a href='javascript:void(0);' onclick='RemoveAddonFromList("+i+");'>"+
+			"<button class='px-2 py-0.5 bg-red-700 hover:bg-red-600 border border-red-600 rounded text-xs text-white'>X</button></a></div>";
 	}
+	div.innerHTML = html;
 }
 
 function RefreshElfSkillList(){
