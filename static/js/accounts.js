@@ -402,7 +402,14 @@ function RenderChars(chars, usrank){
 	document.getElementById('AccInfoCI').innerHTML = charc;
 	if (charc > 0){
 		var headers = usrank > 0 ? ['Name [ID]','Class (Lvl)','Coordinates','Ban Status','Actions'] : ['Name','Class (Lvl)'];
-		var banTypeLabel = {1:'Account',2:'Chat (Acct)',3:'Chat',4:'Role'};
+		// forbid[].type is the *game's own* per-slot ban category (confirmed live:
+		// 100 = role ban, 101 = chat ban — each re-ban overwrites its own slot
+		// rather than appending), NOT our app's ban_type dialog selector (1-4
+		// used only to pick the opcode when *placing* a ban). Unban must map
+		// back through this table to recover a valid ban_type, or it can't be
+		// issued at all.
+		var forbidTypeLabel = {100:'Role', 101:'Chat'};
+		var forbidTypeToBanType = {100:4, 101:3};
 		var hrow = table.insertRow(-1);
 		headers.forEach(function(h){
 			var th = document.createElement('th'); th.textContent = h; th.className = 'text-left'; hrow.appendChild(th);
@@ -438,18 +445,23 @@ function RenderChars(chars, usrank){
 				cell = row.insertCell(2);
 				cell.innerHTML = 'x: '+role.posX+' y: '+role.posY+' z: '+role.posZ+' ['+role.map+']';
 
-				var forbid = role.forbid || [];
-				var isBanned = forbid.length > 0;
+				var nowSec = Date.now() / 1000;
+				var allForbid = role.forbid || [];
+				// A slot with time===0 is treated as permanent (PW convention);
+				// anything else is only "active" if it hasn't expired yet — the
+				// game never removes expired slots from this list on its own.
+				var activeForbid = allForbid.filter(function(f){
+					return f.time === 0 || (f.createtime + f.time) > nowSec;
+				});
+				var isBanned = activeForbid.length > 0;
+				// Prefer the role-ban slot for display/unban when both are active.
+				var f = activeForbid.find(function(x){ return x.type === 100; }) || activeForbid[0];
 				cell = row.insertCell(3);
 				if (isBanned){
-					var f = forbid[0];
-					var label = banTypeLabel[f.type] || ('Type '+f.type);
-					var expText = '';
-					if (f.time > 0 && f.createtime > 0){
-						expText = 'until '+new Date((f.createtime+f.time)*1000).toLocaleString();
-					}
+					var label = forbidTypeLabel[f.type] || ('Type '+f.type);
+					var expText = f.time === 0 ? 'permanent' : 'until '+new Date((f.createtime+f.time)*1000).toLocaleString();
 					cell.innerHTML = '<span style="color:#f87171;font-weight:600;" title="'+(f.reason||'').replace(/"/g,'&quot;')+'">BANNED — '+label+'</span>'
-						+ (expText ? '<br><span style="color:#64748b;font-size:10px;">'+expText+'</span>' : '');
+						+ '<br><span style="color:#64748b;font-size:10px;">'+expText+'</span>';
 				}else{
 					cell.innerHTML = '<span style="color:#4ade80;">Clear</span>';
 				}
@@ -459,7 +471,12 @@ function RenderChars(chars, usrank){
 				if (isBanned){
 					actBtn.textContent = 'Unban';
 					actBtn.className = 'px-2 py-0.5 bg-amber-700 hover:bg-amber-600 border border-amber-600 rounded text-xs text-white transition';
-					actBtn.onclick = (function(rid, ftype){ return function(){ UnbanCharacter(rid, ftype); }; })(role.roleid, forbid[0].type);
+					var mappedBanType = forbidTypeToBanType[f.type];
+					if (mappedBanType){
+						actBtn.onclick = (function(rid, btype){ return function(){ UnbanCharacter(rid, btype); }; })(role.roleid, mappedBanType);
+					}else{
+						actBtn.onclick = function(){ alert('Unrecognized ban type ('+f.type+') — cannot auto-unban from here.'); };
+					}
 				}else{
 					actBtn.textContent = 'Ban';
 					actBtn.className = 'px-2 py-0.5 bg-red-700 hover:bg-red-600 border border-red-600 rounded text-xs text-white transition';
