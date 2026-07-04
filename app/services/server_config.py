@@ -47,6 +47,48 @@ def update_conf_key(content: str, key: str, value: str) -> str:
     return content + f"\n{key} = {value}\n"
 
 
+def _section_bounds(content: str, section: str) -> tuple[int, int] | None:
+    """Return (start, end) char offsets of a [section]'s body, or None if the section is absent."""
+    header = re.compile(rf"^\[{re.escape(section)}\][ \t]*$", re.IGNORECASE | re.MULTILINE)
+    m = header.search(content)
+    if not m:
+        return None
+    body_start = m.end()
+    next_header = re.compile(r"^\[.+\][ \t]*$", re.MULTILINE)
+    n = next_header.search(content, body_start)
+    body_end = n.start() if n else len(content)
+    return body_start, body_end
+
+
+def parse_conf_key_in_section(content: str, section: str, key: str) -> str | None:
+    """Extract 'key = value' but only look inside a specific [section] block."""
+    bounds = _section_bounds(content, section)
+    if bounds is None:
+        return None
+    start, end = bounds
+    return parse_conf_key(content[start:end], key)
+
+
+def update_conf_key_in_section(content: str, section: str, key: str, value: str) -> str:
+    """Set 'key = value' inside [section], creating the section or key if missing.
+
+    Unlike update_conf_key, this never falls back to appending at end-of-file —
+    a key appended after some unrelated later section (e.g. after [FAIRY] instead
+    of inside [GENERAL]) is silently ignored by the game server's ini parser.
+    """
+    bounds = _section_bounds(content, section)
+    if bounds is None:
+        return f"[{section}]\n{key} = {value}\n\n" + content
+    start, end = bounds
+    body = content[start:end]
+    pattern = re.compile(rf"^({re.escape(key)}\s*=\s*).*$", re.IGNORECASE | re.MULTILINE)
+    if pattern.search(body):
+        new_body = pattern.sub(rf"\g<1>{value}", body)
+    else:
+        new_body = body.rstrip("\n") + f"\n{key} = {value}\n"
+    return content[:start] + new_body + content[end:]
+
+
 # CMVal: class index → bit value in allow_login_class_mask
 _CM_VAL = {1: 1, 2: 2, 3: 16, 4: 8, 5: 128, 6: 64, 7: 4, 8: 32,
            9: 256, 10: 512, 11: 1024, 12: 2048}
@@ -95,13 +137,13 @@ async def read_game_config() -> dict:
     try:
         ptemplate = _server_file_path(9, "ptemplate.conf")
         content = await read_conf(ptemplate)
-        debug_val = (parse_conf_key(content, "debug_command_mode") or "").lower()
+        debug_val = (parse_conf_key_in_section(content, "GENERAL", "debug_command_mode") or "").lower()
         result["debug_mode"] = int(debug_val in ("active", "1"))
-        result["class_mask"] = int(parse_conf_key(content, "allow_login_class_mask") or 0)
-        result["exp_bonus"] = int(parse_conf_key(content, "exp_bonus") or 0)
-        result["sp_bonus"] = int(parse_conf_key(content, "sp_bonus") or 0)
-        result["drop_bonus"] = int(parse_conf_key(content, "drop_bonus") or 0)
-        result["money_bonus"] = int(parse_conf_key(content, "money_bonus") or 0)
+        result["class_mask"] = int(parse_conf_key_in_section(content, "GENERAL", "allow_login_class_mask") or 0)
+        result["exp_bonus"] = int(parse_conf_key_in_section(content, "GENERAL", "exp_bonus") or 0)
+        result["sp_bonus"] = int(parse_conf_key_in_section(content, "GENERAL", "sp_bonus") or 0)
+        result["drop_bonus"] = int(parse_conf_key_in_section(content, "GENERAL", "drop_bonus") or 0)
+        result["money_bonus"] = int(parse_conf_key_in_section(content, "GENERAL", "money_bonus") or 0)
         init_log.append("ptemplate.conf loaded")
     except Exception:
         init_log.append(f"Error: ptemplate.conf not found — check SERVER_PATH in .env")
@@ -177,7 +219,9 @@ async def save_game_config(data: dict) -> str:
             ("drop_bonus", str(data.get("drop_bonus", 0))),
             ("money_bonus", str(data.get("money_bonus", 0))),
         ]:
-            content = update_conf_key(content, k, v)
+            # Must land inside [GENERAL] — the gs binary's ptemplate parser only reads
+            # exp_bonus/sp_bonus/money_bonus from that section; anywhere else is a silent no-op.
+            content = update_conf_key_in_section(content, "GENERAL", k, v)
         await _try_write("ptemplate.conf", ptemplate, content)
     except Exception as e:
         errors.append(f"ptemplate.conf: {e}")

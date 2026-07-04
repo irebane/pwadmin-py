@@ -1,4 +1,9 @@
-from app.services.server_config import parse_conf_key, update_conf_key
+from app.services.server_config import (
+    parse_conf_key,
+    update_conf_key,
+    parse_conf_key_in_section,
+    update_conf_key_in_section,
+)
 
 
 def test_parse_conf_key_basic():
@@ -48,6 +53,45 @@ def test_update_conf_key_roundtrip():
     content = update_conf_key(content, "sp_bonus", "100")
     assert parse_conf_key(content, "exp_bonus") == "200"
     assert parse_conf_key(content, "sp_bonus") == "100"
+
+
+def test_update_conf_key_in_section_creates_key_inside_section():
+    content = "[GENERAL]\ndebug_command_mode = active\n\n[FAIRY]\nhp = 30\n"
+    updated = update_conf_key_in_section(content, "GENERAL", "exp_bonus", "10")
+    general_body = updated.split("[FAIRY]")[0]
+    assert "exp_bonus = 10" in general_body
+    assert "[FAIRY]" in updated
+
+
+def test_update_conf_key_in_section_does_not_append_after_later_section():
+    content = "[GENERAL]\ndebug_command_mode = active\n\n[FAIRY]\nhp = 30\n"
+    updated = update_conf_key_in_section(content, "GENERAL", "exp_bonus", "10")
+    fairy_body = updated.split("[FAIRY]")[1]
+    assert "exp_bonus" not in fairy_body
+
+
+def test_update_conf_key_in_section_updates_existing_key():
+    content = "[GENERAL]\nexp_bonus = 1\n\n[FAIRY]\nhp = 30\n"
+    updated = update_conf_key_in_section(content, "GENERAL", "exp_bonus", "10")
+    assert "exp_bonus = 10" in updated
+    assert "exp_bonus = 1\n" not in updated
+
+
+def test_update_conf_key_in_section_creates_missing_section():
+    content = "hp = 30\n"
+    updated = update_conf_key_in_section(content, "GENERAL", "exp_bonus", "10")
+    assert updated.startswith("[GENERAL]")
+    assert "exp_bonus = 10" in updated
+
+
+def test_parse_conf_key_in_section_ignores_other_sections():
+    content = "[GENERAL]\ndebug_command_mode = active\n\n[FAIRY]\nexp_bonus = 10\n"
+    assert parse_conf_key_in_section(content, "GENERAL", "exp_bonus") is None
+
+
+def test_parse_conf_key_in_section_finds_key():
+    content = "[GENERAL]\nexp_bonus = 10\n\n[FAIRY]\nhp = 30\n"
+    assert parse_conf_key_in_section(content, "GENERAL", "exp_bonus") == "10"
 
 
 def test_daemon_status_names():
