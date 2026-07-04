@@ -1,0 +1,6 @@
+#!/bin/sh
+
+killall gs
+sleep 8
+cd /home/gamed
+LD_PRELOAD=./pw_expfix_155.so ./gs gs01 gs.conf gmserver.conf gsalias.conf is61 >/home/logs/gs01.log 2>&1 &
