@@ -537,6 +537,32 @@ def from_elements(elements_path: str, _existing: dict | None = None,
 _BASIC_STAT_LETTERS = {"F": 0, "G": 1, "H": 2, "I": 3}
 _ADDON_NAME_RE = re.compile(r'^A_([A-Z]+)(\d+)$')
 
+# Same "complete family sharing one tier" trick for the 5 elemental defenses
+# (Metal/Wood/Water/Fire/Earth), whose EQUIPMENT_ADDON names are "C_E<tier>A"
+# through "C_E<tier>E" — verified against the curated Metal/Wood/Water/Fire/Earth
+# Def. addon ids (365/368/371/374/377, all tier "01").
+_ELEMENTAL_DEF_LETTERS = {"A": 15, "B": 16, "C": 17, "D": 18, "E": 19}
+_ELEMENTAL_NAME_RE = re.compile(r'^C_E(\d+)([A-E])$')
+
+# Single-stat EQUIPMENT_ADDON name prefixes that map to exactly one stat id across
+# every curated (non-Rune, H-type) ADDONS entry that uses them — derived from
+# tools/generate_items.py analysis correlating item_data.ADDONS against the live
+# EQUIPMENT_ADDON table's Name field. Prefixes that map to more than one stat id
+# (e.g. "A_G" covers both Agility and Hit Point at different tiers) are excluded
+# here and only resolved via exact curated-id match. This lets other power tiers
+# of the *same* addon family resolve, not just the handful of tiers the curated
+# list happens to include.
+_SAFE_PREFIXES = {
+    "AD_L": 35, "A_A": 10, "A_AGI": 13, "A_B": 9, "A_DEF": 10, "A_F": 0, "A_I": 3,
+    "A_J": 27, "A_MD": 6, "A_MDU": 7, "A_N": 11, "A_P": 23,
+    "B_S": 20, "B_T": 21, "B_U": 28, "C_B": 29, "C_C": 14, "C_SD": 8,
+    "D_L": 36, "D_rate": 37, "Ed_rate": 44, "Fd_rate": 45, "Gd_rate": 43,
+    "Mdd_rate": 38, "Wad_rate": 46, "Wd_rate": 42,
+}
+_SAFE_PREFIX_RE = re.compile(
+    r'^(' + '|'.join(re.escape(p) for p in sorted(_SAFE_PREFIXES, key=len, reverse=True)) + r')(\d+)$'
+)
+
 _GEAR_ESSENCE_TABLES = ("004 - WEAPON_ESSENCE", "007 - ARMOR_ESSENCE", "010 - DECORATION_ESSENCE")
 
 # Stats whose octet amount isn't a 1:1 copy of the elements.data param — the client
@@ -550,13 +576,15 @@ _UNIT_SCALE = {28: 0.05}  # stat_id -> elements.data-value-per-octet-unit
 def _curated_addon_map() -> dict[int, tuple[int, str]]:
     """addon_id -> (stat_id, type_char) from the hand-curated ADDONS list, H-type
     only — F-type entries can have per-addon-id scaling quirks (e.g. Max Durability
-    divides by 100) that aren't safe to assume generically."""
+    divides by 100) that aren't safe to assume generically. Runes are excluded --
+    they're a distinct system (duration-bound, separate UI) we don't want to
+    surface as if they were a plain inherent stat bonus."""
     from app.services.item_data import ADDONS
     out = {}
     for a in ADDONS:
         parts = a.split("#")
-        aid, statid, typ = int(parts[0]), int(parts[1]), parts[2]
-        if typ == "H":
+        aid, statid, typ, name = int(parts[0]), int(parts[1]), parts[2], parts[4]
+        if typ == "H" and "Rune" not in name:
             out[aid] = (statid, typ)
     return out
 
@@ -627,6 +655,15 @@ def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict
                 item_id = record.get('ID', 0)
                 if not item_id:
                     continue
+                # addons_N_id_addon is a *random-roll pool*, not a guaranteed set --
+                # e.g. a regular sword (fixed_props=0) had probability_addon_num0
+                # (chance of *zero* addons) over 96%, with the rest of the pool
+                # only sometimes rolled. Only fixed_props==2 items (quest/reward
+                # gear like "Energetic Robe: Wraithgate", verified against its
+                # real in-game tooltip) reliably apply every listed slot — treat
+                # everything else as "can't safely say this is guaranteed."
+                if record.get('fixed_props', 0) != 2:
+                    continue
                 slots = [record.get(f'addons_{n}_id_addon', 0) or 0 for n in range(1, 33)]
                 slots = [s for s in slots if s]
                 if slots:
@@ -656,18 +693,45 @@ def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict
                 for letter, aid in letters.items():
                     quad_resolved[aid] = _BASIC_STAT_LETTERS[letter]
 
+        # Same trick for the elemental-defense quintuple (Metal/Wood/Water/Fire/Earth).
+        elem_parsed: dict[int, tuple[str, str]] = {}
+        for aid in addon_ids:
+            rec = addon_master.get(aid)
+            if not rec:
+                continue
+            m = _ELEMENTAL_NAME_RE.match(rec.get('Name', '') or '')
+            if m:
+                elem_parsed[aid] = (m.group(1), m.group(2))  # (tier, letter)
+        elem_by_tier: dict[str, dict[str, int]] = {}
+        for aid, (tier, letter) in elem_parsed.items():
+            elem_by_tier.setdefault(tier, {})[letter] = aid
+        elem_resolved: dict[int, int] = {}
+        for letters in elem_by_tier.values():
+            if set(letters) == set(_ELEMENTAL_DEF_LETTERS):
+                for letter, aid in letters.items():
+                    elem_resolved[aid] = _ELEMENTAL_DEF_LETTERS[letter]
+
         curated = _curated_addon_map()
 
         out = []
+        seen_aids: set[int] = set()
         for aid in addon_ids:
+            if aid in seen_aids:
+                continue  # same addon_id can appear in multiple slots of one item's pool
+            seen_aids.add(aid)
             rec = addon_master.get(aid)
             if not rec:
                 continue
             if aid in quad_resolved:
                 stat_id = quad_resolved[aid]
+            elif aid in elem_resolved:
+                stat_id = elem_resolved[aid]
             elif aid in curated:
                 stat_id = curated[aid][0]
             else:
+                m = _SAFE_PREFIX_RE.match(rec.get('Name', '') or '')
+                stat_id = _SAFE_PREFIXES[m.group(1)] if m else None
+            if stat_id is None:
                 continue
 
             p1 = rec.get('param1', 0)
@@ -683,6 +747,14 @@ def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict
                 lo, hi = round(min(p1, p2) / scale), round(max(p1, p2) / scale)
             else:
                 lo, hi = min(p1, p2), max(p1, p2)
+            # Sanity guard: a few addon ids resolved via _SAFE_PREFIXES turned out to
+            # store a float32 bit pattern despite their curated H-type sibling being a
+            # plain int (e.g. an "A_P<tier>" Reduce P.Harm variant genuinely encodes a
+            # percentage as float, unlike the curated int-based one) -- those decode
+            # to nonsense values in the billions. Rather than guess which ones need
+            # float reinterpretation, drop anything implausible for a real game stat.
+            if abs(lo) > 100_000 or abs(hi) > 100_000:
+                continue
             out.append({"addon_id": aid, "stat_id": stat_id, "type": "H", "min": lo, "max": hi})
         return out
 
