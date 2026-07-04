@@ -20,6 +20,8 @@ import struct
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 OUTPUT = Path("data/pw_items.json")
 BACKUP_DIR = Path("data/backups")
 
@@ -525,6 +527,134 @@ def from_elements(elements_path: str, _existing: dict | None = None,
     return result
 
 
+# ── Inherent item addons (base-template variable bonuses, e.g. "Strength +3~4") ─
+
+# Weapon/Armor/Jewelry always give their 4 basic-stat bonuses (Strength, Agility,
+# Intelligence, Constitution) through EQUIPMENT_ADDON names "A_F<tier>", "A_G<tier>",
+# "A_H<tier>", "A_I<tier>" sharing the same tier suffix — verified against known
+# item_data.ADDONS entries (tier 009) and against a live item's in-game tooltip
+# (tier 004, "Energetic Robe: Wraithgate"): F/G/H/I -> stat 0/1/2/3 in that order.
+_BASIC_STAT_LETTERS = {"F": 0, "G": 1, "H": 2, "I": 3}
+_ADDON_NAME_RE = re.compile(r'^A_([A-Z]+)(\d+)$')
+
+_GEAR_ESSENCE_TABLES = ("004 - WEAPON_ESSENCE", "007 - ARMOR_ESSENCE", "010 - DECORATION_ESSENCE")
+
+
+def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict[int, list[dict]]:
+    """
+    Parse EQUIPMENT_ADDON + gear essence tables and resolve each item's inherent
+    (variable-range) bonus addons, e.g. an armor's built-in "Strength +3~4".
+    Returns {item_id: [{"addon_id","stat_id","type","name","min","max"}, ...]}.
+    Items whose addons can't be confidently resolved are omitted.
+    """
+    cfg_path = _resolve_cfg(cfg_name, elements_path)
+    conv_idx, tables = _load_config(cfg_path)
+    data = Path(elements_path).read_bytes()
+    pos = 4  # version (int16) + signature (int16)
+
+    addon_master: dict[int, dict] = {}
+    gear_items: dict[int, list[int]] = {}
+
+    for idx, tbl in enumerate(tables):
+        name = tbl['name']
+        if idx == 0:
+            pos += tbl['offset']
+        elif tbl['offset'] == 'AUTO' and idx == 20:
+            pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len + 4
+        elif tbl['offset'] == 'AUTO' and idx == 100:
+            pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len
+        elif isinstance(tbl['offset'], int) and tbl['offset'] > 0:
+            pos += tbl['offset']
+
+        if idx == conv_idx:
+            pat_pos = data.find(b'facedata\\', pos)
+            list_length = max(pat_pos - pos - 72, 0) if pat_pos != -1 else 0
+            pos += list_length
+            continue
+
+        if pos + 4 > len(data):
+            break
+        count = struct.unpack_from('<i', data, pos)[0]; pos += 4
+        if count < 0 or count > 200_000:
+            break
+        rec_size = tbl['rec_size']
+        if rec_size == 0:
+            continue
+
+        want = name == "001 - EQUIPMENT_ADDON" or name in _GEAR_ESSENCE_TABLES
+        if not want:
+            pos += count * rec_size
+            continue
+
+        fields = tbl['fields']; types = tbl['types']
+        for _ in range(count):
+            rec_start = pos
+            record = {}
+            for fld, ftype in zip(fields, types):
+                v, pos = _read_field(data, pos, ftype)
+                record[fld] = v
+            if pos != rec_start + rec_size:
+                pos = rec_start + rec_size
+
+            if name == "001 - EQUIPMENT_ADDON":
+                addon_master[record.get('ID')] = record
+            elif name in _GEAR_ESSENCE_TABLES:
+                item_id = record.get('ID', 0)
+                if not item_id:
+                    continue
+                slots = [record.get(f'addons_{n}_id_addon', 0) or 0 for n in range(1, 33)]
+                slots = [s for s in slots if s]
+                if slots:
+                    gear_items[item_id] = slots
+
+    def resolve_item(addon_ids: list[int]) -> list[dict]:
+        # Only resolve the "complete quadruple" basic-stat-bonus pattern (see comment
+        # above): F/G/H/I sharing one tier suffix, all present on the same item.
+        # These are plain integer stat points with no unit conversion, so the
+        # elements.data param is exactly the octet amount an admin would type in.
+        parsed: dict[int, tuple[str, str]] = {}
+        for aid in addon_ids:
+            rec = addon_master.get(aid)
+            if not rec:
+                continue
+            m = _ADDON_NAME_RE.match(rec.get('Name', '') or '')
+            if m:
+                parsed[aid] = (m.group(1), m.group(2))
+
+        by_tier: dict[str, dict[str, int]] = {}
+        for aid, (letter, tier) in parsed.items():
+            if letter in _BASIC_STAT_LETTERS:
+                by_tier.setdefault(tier, {})[letter] = aid
+        quad_resolved: dict[int, int] = {}
+        for letters in by_tier.values():
+            if set(letters) == set(_BASIC_STAT_LETTERS):
+                for letter, aid in letters.items():
+                    quad_resolved[aid] = _BASIC_STAT_LETTERS[letter]
+
+        out = []
+        for aid in addon_ids:
+            if aid not in quad_resolved:
+                continue
+            rec = addon_master.get(aid)
+            if not rec:
+                continue
+            p1, p2 = rec.get('param1', 0), rec.get('param2', 0)
+            out.append({"addon_id": aid, "stat_id": quad_resolved[aid], "type": "H",
+                        "min": min(p1, p2), "max": max(p1, p2)})
+        return out
+
+    result: dict[int, list[dict]] = {}
+    for item_id, addon_ids in gear_items.items():
+        resolved = resolve_item(addon_ids)
+        if resolved:
+            result[item_id] = resolved
+    return result
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -588,6 +718,12 @@ def main() -> None:
             sys.exit(1)
         print(f"Parsing elements.data: {el_path}", file=sys.stderr)
         result = from_elements(el_path, existing, cfg_name=args.config)
+
+        print("Extracting inherent item addons (base-template variable bonuses)...", file=sys.stderr)
+        addons_path = out_path.parent / "pw_item_addons.json"
+        item_addons = extract_item_addons(el_path, cfg_name=args.config)
+        addons_path.write_text(json.dumps(item_addons, ensure_ascii=False, indent=None), encoding="utf-8")
+        print(f"Written inherent addons for {len(item_addons):,} items to {addons_path}", file=sys.stderr)
 
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=None), encoding="utf-8")
     total = sum(len(v) for subs in result.values() for v in subs.values())

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from app.deps import require_admin
-from app.services.items import get_item_name, search_items, _load_items
+from app.services.items import get_item_name, search_items, _load_items, get_inherent_addons
 from app.services.item_data import get_template_data, build_item_opts
 from app.services.game_client import GameClient, PacketWriter, _cuint_encode, _send_packet
 from app.services.game_mail import send_mail
@@ -61,6 +61,15 @@ async def item_by_id(item_id: int, user: dict = Depends(require_admin)):
     if name is None:
         raise HTTPException(404)
     return {"id": item_id, "name": name}
+
+
+@router.get("/api/items/{item_id}/addons")
+async def item_inherent_addons(item_id: int, user: dict = Depends(require_admin)):
+    """Built-in variable-range bonus addons for this item (e.g. armor's inherent
+    'Strength +3~4'), resolved from the base item template — not the admin-picked
+    Addons list. Frontend renders these with GetAddonString() and can add them at
+    max value with one click."""
+    return get_inherent_addons(item_id)
 
 
 # ── Character lookup ─────────────────────────────────────────────────────────

@@ -11,6 +11,20 @@ def _load_items() -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=1)
+def _load_item_addons() -> dict:
+    path = Path("data/pw_item_addons.json")
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def get_inherent_addons(item_id: int) -> list[dict]:
+    """Return an item's built-in variable-range bonus addons, e.g. an armor's
+    inherent 'Strength +3~4' — see tools/generate_items.py:extract_item_addons."""
+    return _load_item_addons().get(str(item_id), [])
+
+
 @lru_cache(maxsize=None)
 def _build_id_map() -> dict[int, str]:
     """Build item_id → name map from the nested structure."""

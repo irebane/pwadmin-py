@@ -365,6 +365,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
   <select id='Inp_W_Socket' class="text-xs"><option value='0' selected>No socket</option><option value='1'>1 socket</option><option value='2'>2 socket</option><option value='3'>3 socket</option><option value='4'>4 socket</option></select>
 </td></tr>
 <tr><td colspan="2"><span id="SocketWSack"></span></td></tr>
+<tr><td colspan="2"><div id="InherentAddonsDivW" class="text-xs"></div></td></tr>
 <tr><td>Addons:</td><td>
   <select id='Inp_W_AddonType' class="w-[250px] text-xs" onchange='CheckAddonType(this);'>
   {% for entry in addons_w %}{% set ap = entry.split('#') %}<option value='{{ entry }}'{% if loop.first %} selected{% endif %}>{{ ap[4] }}</option>
@@ -409,6 +410,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <tr style='display:none;'><td>Item Flag:</td><td><select id='Inp_A_ItFlag'><option value='00'>00</option><option value='01'>01</option><option value='02'>02</option><option value='03' selected>03</option><option value='04'>04</option></select></td></tr>
 <tr><td>Socket:</td><td><select id='Inp_A_Socket' class="text-xs"><option value='0' selected>No socket</option><option value='1'>1 socket</option><option value='2'>2 socket</option><option value='3'>3 socket</option><option value='4'>4 socket</option></select></td></tr>
 <tr><td colspan="2"><span id="SocketASack"></span></td></tr>
+<tr><td colspan="2"><div id="InherentAddonsDivA" class="text-xs"></div></td></tr>
 <tr><td>Addons:</td><td>
   <select id='Inp_A_AddonType' class="w-[250px] text-xs" onchange='CheckAddonType(this);'>
   {% for entry in addons_a %}{% set ap = entry.split('#') %}<option value='{{ entry }}'{% if loop.first %} selected{% endif %}>{{ ap[4] }}</option>
@@ -450,6 +452,7 @@ function submitAddToBoutique(){var btn=document.getElementById("boutiqueAddBtn")
 <tr><td>Duratibility:</td><td><input type="text" maxlength="4" id="Inp_J_CurDur" value='42' class="w-[45px] bg-amber-950 text-amber-200"> - <input type="text" maxlength="4" id="Inp_J_MaxDur" value='42' class="w-[45px] bg-amber-950 text-amber-200"></td></tr>
 <tr style='display:none;'><td>Item Type:</td><td><select id='Inp_J_ItType' disabled><option value='2c00'>Weapon</option><option value='2400' selected>Armor &amp; Acces.</option></select></td></tr>
 <tr style='display:none;'><td>Item Flag:</td><td><select id='Inp_J_ItFlag'><option value='00'>00</option><option value='01'>01</option><option value='02'>02</option><option value='03' selected>03</option><option value='04'>04</option></select></td></tr>
+<tr><td colspan="2"><div id="InherentAddonsDivJ" class="text-xs"></div></td></tr>
 <tr><td>Addons:</td><td>
   <select id='Inp_J_AddonType' class="w-[250px] text-xs" onchange='CheckAddonType(this);'>
   {% for entry in addons_j %}{% set ap = entry.split('#') %}<option value='{{ entry }}'{% if loop.first %} selected{% endif %}>{{ ap[4] }}</option>

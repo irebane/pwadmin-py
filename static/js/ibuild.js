@@ -29,6 +29,83 @@ var LastOctet = "";
 var LastItemList = "";
 var itmCol = [];
 var TempItemData;
+var InherentAddons = {};	// letter (W/A/J) -> last-fetched list of base-template addons
+
+// ── Inherent (base-template) addons — the item's own "Strength +3~4" style ─────
+// bonus stats, resolved server-side from elements.data. These are separate from
+// the admin-picked Addons list above and are always empty until added.
+
+function LoadInherentAddons(cat, itemId){
+	var letter = (cat=="1") ? "W" : (cat=="2") ? "A" : (cat=="3") ? "J" : null;
+	if (!letter){ return; }
+	var div = document.getElementById('InherentAddonsDiv'+letter);
+	if (!div){ return; }
+	InherentAddons[letter] = [];
+	div.innerHTML = "";
+	if (!itemId){ return; }
+	fetch('/api/items/'+itemId+'/addons')
+		.then(function(r){ return r.ok ? r.json() : []; })
+		.then(function(list){
+			InherentAddons[letter] = list || [];
+			RenderInherentAddons(letter);
+		})
+		.catch(function(){ InherentAddons[letter] = []; });
+}
+
+function RenderInherentAddons(letter){
+	var div = document.getElementById('InherentAddonsDiv'+letter);
+	if (!div){ return; }
+	var list = InherentAddons[letter] || [];
+	if (list.length === 0){
+		div.innerHTML = "";
+		return;
+	}
+	var html = "<div class='text-amber-300 mb-1'>Base template bonus (this item always rolls these when spawned normally) — edit the value, then add:</div>";
+	for (var i = 0; i < list.length; i++){
+		var a = list[i];
+		var label = (StatName[a.stat_id] != null) ? GetAddonString(a.stat_id, a.max) : ("Addon ["+a.addon_id+"]");
+		var rangeTxt = (a.min == a.max) ? (""+a.max) : (a.min+"~"+a.max);
+		html += "<div class='flex justify-between items-center py-0.5'><span>"+label+
+			" <span class='text-slate-400'>(range "+rangeTxt+")</span></span>"+
+			"<span><input type='text' maxlength='5' id='InherentAmt"+letter+"_"+i+"' value='"+a.max+"' class='w-[45px] text-center'> "+
+			"<a href='javascript:void(0);' onclick='AddResolvedAddon(\""+letter+"\","+i+");'>"+
+			"<button class='px-2 py-0.5 bg-green-700 hover:bg-green-600 border border-green-600 rounded text-xs text-white'>+</button></a></span></div>";
+	}
+	html += "<div class='mt-1'><a href='javascript:void(0);' onclick='AddAllInherentAddons(\""+letter+"\");'>"+
+		"<button class='px-2 py-0.5 bg-blue-700 hover:bg-blue-600 border border-blue-600 rounded text-xs text-white font-semibold'>Add all (at entered values)</button></a></div>";
+	div.innerHTML = html;
+}
+
+function AddAllInherentAddons(letter){
+	var list = InherentAddons[letter] || [];
+	for (var i = 0; i < list.length; i++){
+		AddResolvedAddon(letter, i);
+	}
+}
+
+// Reads the (editable) amount input for inherent-addon row `idx` of `letter` and
+// adds it to the same Addons[] list the manual "Addons:" picker above uses — so
+// removal (X button) works exactly like any other addon already does.
+function AddResolvedAddon(letter, idx){
+	var list = InherentAddons[letter] || [];
+	var a = list[idx];
+	if (!a){ return; }
+	var inp = document.getElementById('InherentAmt'+letter+'_'+idx);
+	var amount = parseInt(inp ? inp.value : a.max, 10);
+	if (isNaN(amount)){
+		alert("Write how much bonus you want!");
+		return;
+	}
+	if (AddInd >= 12){
+		alert("Too much addon...");
+		return;
+	}
+	AddInd++;
+	var hex = DectoRevHex(a.addon_id, 8, 2) + DectoRevHex(amount, 8, 0);
+	var txt = (StatName[a.stat_id] != null) ? GetAddonString(a.stat_id, amount) : ("Addon["+a.addon_id+"]: "+amount);
+	Addons[AddInd] = hex+"#"+txt+"#H#WAJBM#"+amount+"#0#0";
+	RefreshAddonList();
+}
 
 function GenerateClassMask(){
 	var result = 0;
@@ -2898,6 +2975,7 @@ function getPItemData(e){
 		var e1 = document.getElementById("Inp_Grade1");
 		e1.selectedIndex = myArr[2]-1;
 		ChangeGrade();
+		LoadInherentAddons(cat, parseInt(itmId, 10));
 	}else if (cat == "4"){
 		if (sct==1){
 			var reqLv = document.getElementById("Inp_F_ReqLv");
