@@ -817,18 +817,6 @@ function ChangeArmorType(){
 	inp7.value = 0;
 	inp8.value = 0;
 	inp9.value = 0;
-	inp1.style.backgroundColor = "#1e293b";
-	inp2.style.backgroundColor = "#1e293b";
-	inp3.style.backgroundColor = "#1e293b";
-	inp4.style.backgroundColor = "#1e293b";
-	inp5.style.backgroundColor = "#1e293b";
-	inp6.style.backgroundColor = "#1e293b";
-	inp7.style.backgroundColor = "#1e293b";
-	inp8.style.backgroundColor = "#1e293b";
-	inp9.style.backgroundColor = "#1e293b";
-	inp10.style.backgroundColor = "#1e293b";
-	inp11.style.backgroundColor = "#1e293b";
-	inp12.style.backgroundColor = "#1e293b";
 	if ((AST == 1)||(AST == 4)||(AST == 7)||(AST == 10)){
 		inp4.value = 15;
 		inp5.value = 5;
@@ -836,14 +824,6 @@ function ChangeArmorType(){
 		inp7.value = 5;
 		inp8.value = 5;
 		inp9.value = 5;
-		inp4.style.backgroundColor = "#92400e";
-		inp5.style.backgroundColor = "#92400e";
-		inp6.style.backgroundColor = "#92400e";
-		inp7.style.backgroundColor = "#92400e";
-		inp8.style.backgroundColor = "#92400e";
-		inp9.style.backgroundColor = "#92400e";	
-		inp10.style.backgroundColor = "#92400e";
-		inp11.style.backgroundColor = "#92400e";
 	}else if ((AST == 2)||(AST == 5)||(AST == 8)||(AST == 11)){
 		inp4.value = 10;
 		inp5.value = 9;
@@ -851,14 +831,6 @@ function ChangeArmorType(){
 		inp7.value = 9;
 		inp8.value = 9;
 		inp9.value = 9;
-		inp4.style.backgroundColor = "#92400e";
-		inp5.style.backgroundColor = "#92400e";
-		inp6.style.backgroundColor = "#92400e";
-		inp7.style.backgroundColor = "#92400e";
-		inp8.style.backgroundColor = "#92400e";
-		inp9.style.backgroundColor = "#92400e";	
-		inp10.style.backgroundColor = "#92400e";
-		inp11.style.backgroundColor = "#92400e";
 	}else if ((AST == 3)||(AST == 6)||(AST == 9)||(AST == 12)){
 		inp4.value = 7;
 		inp5.value = 15;
@@ -866,25 +838,12 @@ function ChangeArmorType(){
 		inp7.value = 15;
 		inp8.value = 15;
 		inp9.value = 15;
-		inp4.style.backgroundColor = "#92400e";
-		inp5.style.backgroundColor = "#92400e";
-		inp6.style.backgroundColor = "#92400e";
-		inp7.style.backgroundColor = "#92400e";
-		inp8.style.backgroundColor = "#92400e";
-		inp9.style.backgroundColor = "#92400e";	
-		inp10.style.backgroundColor = "#92400e";
-		inp12.style.backgroundColor = "#92400e";
 	}else if (AST == 13){
 		inp1.value = 10;
-		inp1.style.backgroundColor = "#92400e";
-		inp10.style.backgroundColor = "#92400e";
 	}else if (AST == 14){
 		inp2.value = 10;
-		inp2.style.backgroundColor = "#92400e";
-		inp10.style.backgroundColor = "#92400e";
 	}else if (AST == 15){
 		inp3.value = 10;
-		inp3.style.backgroundColor = "#92400e";	
 	}	
 	ChangeMaskType();
 }
@@ -922,38 +881,20 @@ function ChangeJewelType(){
 	inp7.value = 0;
 	inp8.value = 0;
 	inp9.value = 0;
-	inp1.style.backgroundColor = "#1e293b";
-	inp2.style.backgroundColor = "#1e293b";
-	inp3.style.backgroundColor = "#1e293b";
-	inp4.style.backgroundColor = "#1e293b";
-	inp5.style.backgroundColor = "#1e293b";
-	inp6.style.backgroundColor = "#1e293b";
-	inp7.style.backgroundColor = "#1e293b";
-	inp8.style.backgroundColor = "#1e293b";
-	inp9.style.backgroundColor = "#1e293b";
 	if ((JST == 1)||(JST == 4)){
-		inp4.style.backgroundColor = "#92400e";
 		inp4.value = 6;
 	}else if ((JST == 2)||(JST == 5)){
 		inp3.value = 6;
-		inp3.style.backgroundColor = "#92400e";
 	}else if ((JST == 3)||(JST == 6)){
 		inp5.value = 5;
 		inp6.value = 5;
 		inp7.value = 5;
 		inp8.value = 5;
 		inp9.value = 5;
-		inp5.style.backgroundColor = "#92400e";
-		inp6.style.backgroundColor = "#92400e";
-		inp7.style.backgroundColor = "#92400e";
-		inp8.style.backgroundColor = "#92400e";
-		inp9.style.backgroundColor = "#92400e";
 	}else if (JST == 7){
 		inp1.value = 4;
-		inp1.style.backgroundColor = "#92400e";
 	}else if (JST == 8){
 		inp2.value = 4;
-		inp2.style.backgroundColor = "#92400e";
 	}
 	
 	ChangeMaskType();
@@ -1202,12 +1143,6 @@ function ChangeWeaponType(){
 	var d10 = document.getElementById('Inp_W_Class');
 	var d11 = document.getElementById('Inp_W_AGI');
 	var d12 = document.getElementById('Inp_W_INT');
-	d6.style.backgroundColor = "#1e293b";
-	d7.style.backgroundColor = "#1e293b";
-	d8.style.backgroundColor = "#1e293b";
-	d9.style.backgroundColor = "#1e293b";
-	d11.style.backgroundColor = "#1e293b";
-	d12.style.backgroundColor = "#1e293b";
 	
     ChangeItemList(CIType, SIType, CIType, wst);
 	SIType = wst;
@@ -1429,13 +1364,7 @@ function ChangeWeaponType(){
 		d10.value = 2048;
 	}
 	if ((wst == 25)||(wst == 23)||((wst < 22)&&(wst > 17))){
-		d8.style.backgroundColor = "#92400e";
-		d9.style.backgroundColor = "#92400e";
-		d12.style.backgroundColor = "#92400e";
 	}else{
-		d6.style.backgroundColor = "#92400e";
-		d7.style.backgroundColor = "#92400e";	
-		d11.style.backgroundColor = "#92400e";		
 	}
 	SCInp(99);
 	CalcStatReq();
@@ -3553,8 +3482,6 @@ function GroupResetSelectedItem(){
 	var c=0;
 	if (roleid < 1){
 		resp.innerHTML = "<font color='red'><b><i> Invalid role id!</i></b></font>";
-		document.getElementById("Inp_RoleId").style.backgroundColor="#7f1d1d";
-		document.getElementById("Inp_Money").style.backgroundColor="#1e293b";
 	}else{
 		for (i = 1; i <= SIInd; i++) {
 			myArr = SIData[i].split("#");
@@ -3718,16 +3645,10 @@ function SelectNewItem (){
 		resp.innerHTML = "";
 		if (money > 200000000){
 			resp.innerHTML = "<font color='red'><b><i> Cannot send over 200 mil!</i></b></font>";
-			document.getElementById("Inp_Money").style.backgroundColor="#7f1d1d";
-			document.getElementById("Inp_RoleId").style.backgroundColor="#1e293b";
 		}else{
 			if (roleid < 1024){
 				resp.innerHTML = "<font color='red'><b><i> Invalid role id!</i></b></font>";
-				document.getElementById("Inp_RoleId").style.backgroundColor="#7f1d1d";
-				document.getElementById("Inp_Money").style.backgroundColor="#1e293b";
 			}else{
-				document.getElementById("Inp_RoleId").style.backgroundColor="#1e293b";
-				document.getElementById("Inp_Money").style.backgroundColor="#1e293b";
 				SIInd++;
 				SIData[SIInd] = nData.join("#");
 				resp.innerHTML = "<font color='#4ade80'><b><i> "+nData[5]+" <font color='red'>added...</font></i></b></font>";
@@ -6182,15 +6103,10 @@ function HighlightRows(rId, st){
 	RArr[5]=5;
 	RArr[6]=1;
 	for (var x=1; x<=5; x++){
-		document.getElementById(cTab2+x).style.backgroundColor='#fff';
 		if (x != rId){
-			document.getElementById(cTab1+x).style.backgroundColor='#fff';
 		}else{
-			document.getElementById(cTab1+x).style.backgroundColor='#ffc';
 		}
 	}
-	document.getElementById(cTab2+RArr[rId+shft]).style.backgroundColor='#ccf';
-	document.getElementById(cTab2+RArr[rId-1+shft]).style.backgroundColor='#ccf';
 
 }
 
