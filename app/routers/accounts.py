@@ -76,7 +76,7 @@ class ToolBody(BaseModel):
     bantype: int = 0
     gmid: int = 0
     banreason: str = ""
-    bandur: str = ""
+    bandur: int = 0
 
 
 @router.post("/tool")
