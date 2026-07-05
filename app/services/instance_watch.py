@@ -31,7 +31,7 @@ activity per zone is also tracked here as a fallback for the idle auto-stop side
 
 The idle side (_idle_check_loop) does not rely on that request-based timer alone — it reads
 each zone's REAL live player count directly out of its process's own memory before ever
-stopping it (see _read_zone_player_count). Background: a first attempt at this used MySQL's
+stopping it (see server_status.read_zone_player_count). Background: a first attempt at this used MySQL's
 `online` table cross-referenced with GameClient.get_user_roles()'s world_tag per online
 account, but that data turns out to be frozen at whatever it was at last login/checkpoint, not
 updated by in-session zone switches — confirmed live by an account showing `map=1` while
@@ -60,12 +60,11 @@ local-filesystem-access pattern).
 import asyncio
 import json
 import re
-import struct
 import time
 from pathlib import Path
 
 from app.config import settings
-from app.services.server_status import get_running_zone_ids, get_running_zone_pids
+from app.services.server_status import get_running_zone_ids, get_running_zone_pids, read_zone_player_count
 from app.services.game_client import GameClient
 
 HOOK_LOG_PATH = Path("/tmp/pw_switch_watch.log")
@@ -80,12 +79,6 @@ MAX_LOG_ENTRIES = 300
 DEFAULT_IDLE_MINUTES = 60
 PROTECTED_ZONES = {"gs01"}        # never touched: core world, not managed by gs_zone.sh
 GAMEDBD_PORT = 29400              # see _ensure_user_zones_started for why this isn't settings.server_port
-
-# Live player-count read, verified 2026-07-05 via disassembly of /home/gamed/gs (non-PIE, so
-# these addresses/offsets are fixed and identical across every gs <zone> process). See the
-# module docstring for the full derivation.
-WORLD_MANAGER_PTR_ADDR = 0x094C2BFC   # world_manager::GetInstance(): mov eax,[this]; ret
-PLAYER_COUNT_OFFSET = 0xD0            # world_manager* -> +0xC0 (obj_manager<gplayer>) -> +0x10 (count)
 
 _LINE_RE = re.compile(r"worldtag=(\d+)")
 _LOGIN_RE = re.compile(r"UserLogin:userid=(\d+)")
@@ -395,27 +388,6 @@ def _seed_activity_baselines() -> None:
             _last_activity.setdefault(zone_id, now)
 
 
-def _read_zone_player_count(pid: int) -> int | None:
-    """Reads the live 'currently connected player' count directly out of a running
-    gs <zone> process's own memory. Purely a passive read (two 4-byte reads via
-    /proc/<pid>/mem) — cannot affect the target process. Returns None if the read fails for
-    any reason (process gone, unexpected layout, permission) rather than guessing; callers
-    must treat None as "unknown", not "empty". See module docstring for the derivation."""
-    try:
-        with open(f"/proc/{pid}/mem", "rb", buffering=0) as f:
-            f.seek(WORLD_MANAGER_PTR_ADDR)
-            world_manager_ptr = struct.unpack("<I", f.read(4))[0]
-            if world_manager_ptr == 0:
-                return None
-            f.seek(world_manager_ptr + PLAYER_COUNT_OFFSET)
-            count = struct.unpack("<i", f.read(4))[0]
-            if count < 0:
-                return None  # sanity check — a real count is never negative
-            return count
-    except Exception:
-        return None
-
-
 async def _idle_check_loop() -> None:
     while True:
         await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
@@ -427,7 +399,7 @@ async def _idle_check_loop() -> None:
                 if not _eligible_for_autostop(zone_id):
                     continue
 
-                count = _read_zone_player_count(pid)
+                count = read_zone_player_count(pid)
                 if count is not None:
                     if count > 0:
                         # a real player is actually in there right now — never stop it, no

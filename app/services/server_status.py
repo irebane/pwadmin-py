@@ -1,7 +1,37 @@
 import asyncio
 import socket
+import struct
 from pathlib import Path
 from app.config import settings
+
+# Live player-count read, verified 2026-07-05 via disassembly of /home/gamed/gs (non-PIE, so
+# these addresses/offsets are fixed and identical across every gs <zone> process):
+# world_manager::GetInstance() is `mov eax, [WORLD_MANAGER_PTR_ADDR]; ret` — a fixed-address
+# global singleton pointer. world_manager::AllocPlayer()/FreePlayer() both compute
+# `this + 0xC0` as the obj_manager<gplayer> member, and
+# obj_manager_basic<gplayer>::GetAllocedCount() reads `*(member + 0x10)`, with Alloc()/Free()
+# doing incl/decl on exactly that field — a genuine live "currently connected" counter, not a
+# capacity/pool-size value. See docs/zone-lifecycle-and-gm-protocol.md for the full derivation.
+WORLD_MANAGER_PTR_ADDR = 0x094C2BFC
+PLAYER_COUNT_OFFSET = 0xD0
+
+
+def read_zone_player_count(pid: int) -> int | None:
+    """Passive read of the live player count directly out of a running gs <zone> process's
+    own memory (two 4-byte reads via /proc/<pid>/mem). Cannot affect the target process.
+    Returns None if the read fails for any reason — callers must treat that as "unknown", not
+    "empty"."""
+    try:
+        with open(f"/proc/{pid}/mem", "rb", buffering=0) as f:
+            f.seek(WORLD_MANAGER_PTR_ADDR)
+            world_manager_ptr = struct.unpack("<I", f.read(4))[0]
+            if world_manager_ptr == 0:
+                return None
+            f.seek(world_manager_ptr + PLAYER_COUNT_OFFSET)
+            count = struct.unpack("<i", f.read(4))[0]
+            return count if count >= 0 else None  # sanity check — a real count is never negative
+    except Exception:
+        return None
 
 SERVICES = [
     ("logservice",  "Log Service"),
@@ -140,10 +170,14 @@ def get_running_zone_ids() -> set[str]:
 async def get_maps_status() -> dict:
     zones = settings.gs_zones_dict
     online, offline = [], []
-    running_ids = get_running_zone_ids()
+    running_pids = get_running_zone_pids()
     for zone_id, info in zones.items():
         name = info.get("name", zone_id) if isinstance(info, dict) else info
         ztype = info.get("type", "") if isinstance(info, dict) else ""
-        entry = {"id": zone_id, "name": name, "type": ztype}
-        (online if zone_id in running_ids else offline).append(entry)
+        pid = running_pids.get(zone_id)
+        if pid is not None:
+            entry = {"id": zone_id, "name": name, "type": ztype, "players": read_zone_player_count(pid)}
+            online.append(entry)
+        else:
+            offline.append({"id": zone_id, "name": name, "type": ztype})
     return {"online": online, "offline": offline}
