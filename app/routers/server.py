@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.deps import require_admin
 from app.config import settings
 from app.services.server_config import read_game_config, save_game_config
-from app.services.server_status import get_server_status, get_maps_status
+from app.services.server_status import get_server_status, get_maps_status, get_running_zone_ids
 from app.services import instance_watch
 from pydantic import BaseModel
 
@@ -105,12 +105,18 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
     if body.action not in allowed:
         raise HTTPException(400, detail="Invalid action")
 
+    admin_name = user.get("name", "?")
+
     if body.action in ("stopmaps", "startmaps"):
         zones = settings.gs_zones_dict
         if body.action == "startmaps":
             args = list(zones.keys())
         else:  # stopmaps — protect World-type zones (gs01 is always protected by the script itself)
             args = [z for z, info in zones.items() if info.get("type") == "world"]
+            about_to_stop = get_running_zone_ids() - set(args) - {"gs01"}
+            for zid in sorted(about_to_stop):
+                name = zones.get(zid, {}).get("name", zid)
+                instance_watch.log_event(f"Manually stopped {zid} ({name}) — by {admin_name} (bulk 'Stop Maps')")
         await asyncio.create_subprocess_exec(
             "sudo", "/home/gs_zone.sh", body.action, *args,
             stdout=asyncio.subprocess.DEVNULL,
@@ -135,6 +141,9 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
             raise HTTPException(409, detail="Zone is already running.")
         if "Insufficient memory" in output:
             raise HTTPException(503, detail=output)
+        if body.action == "stop" and "Stopped" in output:
+            name = zones.get(body.zone, {}).get("name", body.zone)
+            instance_watch.log_event(f"Manually stopped {body.zone} ({name}) — by {admin_name}")
         return {"ok": True}
     except asyncio.TimeoutError:
         raise HTTPException(504, detail="Zone command timed out")

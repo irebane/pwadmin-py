@@ -109,6 +109,14 @@ def get_log() -> list[dict]:
     return _log_entries
 
 
+def log_event(text: str) -> None:
+    """Public entry point for other parts of the app (e.g. manual map-control actions in
+    app/routers/server.py) to append to the same Instance Activity log the watcher itself
+    uses for auto-start/auto-stop entries — keeps one unified place to see what happened to
+    a zone and why, regardless of whether a human or the watcher did it."""
+    _log(text)
+
+
 def _load_log() -> None:
     global _log_entries
     try:
