@@ -135,6 +135,12 @@ async def get_server_status() -> dict:
     except Exception:
         pass
 
+    players_online = 0
+    for _zone_id, _pid in get_running_zone_pids().items():
+        _count = read_zone_player_count(_pid)
+        if _count is not None:
+            players_online += _count
+
     cpu_pct = 0
     try:
         s1 = Path("/proc/stat").read_text().splitlines()[0].split()[1:]
@@ -157,6 +163,7 @@ async def get_server_status() -> dict:
         "swap_used": swap_used,
         "disk_total": disk_total,
         "disk_used": disk_used,
+        "players_online": players_online,
         "services": services,
         "glinkd": glinkd,
     }

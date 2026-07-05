@@ -120,9 +120,9 @@
               <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">DB Workers</span>
               <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                 <p class="text-xs text-slate-300 font-medium mb-1.5">Game Database Daemon workers</p>
-                <p class="text-xs text-slate-400 leading-relaxed mb-2">Each worker is a forked process that holds <span class="text-slate-300">one MySQL connection</span> and handles character saves, item operations, and trades. Uses <span class="text-slate-300">~9.5 MB RAM</span> per worker.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Each worker is a <span class="text-slate-300">thread</span> inside the single <span class="text-slate-300">gamedbd</span> process, holding one MySQL connection and handling character saves, item operations, and trades — not a separate OS process.</p>
                 <p class="text-xs text-slate-400 leading-relaxed mb-2">Rule of thumb: <span class="text-slate-300">1 worker per 50 concurrent players</span>, minimum 2. For a small family server 2 is plenty.</p>
-                <p class="text-xs text-slate-400 leading-relaxed mb-2"><span class="text-slate-300">Server Status shows total processes</span>, not just workers. 6 fixed overhead processes are always present (parent, I/O, timer, dispatcher forks), so <span class="text-slate-300">total = setting + 6</span>. Setting 2 → 8 shown in status.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Verified directly (<span class="text-slate-300">/proc/&lt;pid&gt;/task</span>): <span class="text-slate-300">Server Status's Count column always shows 1</span> for Game DB Daemon no matter this setting — it counts processes, and gamedbd never forks. It's still working; that column just can't show it.</p>
                 <p class="text-xs text-amber-500">⚠ Server restart required for changes to take effect.</p>
               </div>
             </div>
@@ -136,7 +136,7 @@
                 <p class="text-xs text-slate-300 font-medium mb-1.5">Unique Name Daemon workers</p>
                 <p class="text-xs text-slate-400 leading-relaxed mb-2">Consulted only during <span class="text-slate-300">character creation and rename</span> to enforce name uniqueness. Not involved in normal gameplay at all.</p>
                 <p class="text-xs text-slate-400 leading-relaxed mb-2"><span class="text-slate-300">1 worker is sufficient for any server size</span> — name checks are infrequent and fast.</p>
-                <p class="text-xs text-slate-400 leading-relaxed mb-2"><span class="text-slate-300">Server Status shows total processes</span>, not just workers. 6 fixed overhead processes are always present, so <span class="text-slate-300">total = setting + 6</span>. Setting 1 → 7 shown in status.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Same as DB Workers — this is a <span class="text-slate-300">thread</span> count inside the single <span class="text-slate-300">uniquenamed</span> process, not separate processes. Server Status's Count column always shows 1 regardless of this setting.</p>
                 <p class="text-xs text-amber-500">⚠ Server restart required for changes to take effect.</p>
               </div>
             </div>
@@ -221,8 +221,8 @@
           </div>
         </div>
 
-        <!-- CPU / RAM / Swap / Disk cards -->
-        <div class="grid grid-cols-4 gap-3 mb-4">
+        <!-- CPU / RAM / Swap / Disk / Players cards -->
+        <div class="grid grid-cols-5 gap-3 mb-4">
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
             <div class="text-xs font-medium text-slate-600 mb-0.5">CPU</div>
             <div class="text-base font-semibold"
@@ -251,6 +251,10 @@
             <div class="text-base font-semibold">
               <span :class="colorForPct(pctOf(diskUsed, diskTotal))" x-text="fmtPart(diskUsed)"></span><span class="text-slate-500">/</span><span class="text-slate-400" x-text="fmtPart(diskTotal)"></span>
             </div>
+          </div>
+          <div class="bg-slate-800/60 rounded-lg p-3 text-center">
+            <div class="text-xs font-medium text-slate-600 mb-0.5">Players</div>
+            <div class="text-base font-semibold text-sky-400" x-text="playersOnline"></div>
           </div>
         </div>
 
@@ -674,7 +678,7 @@ function serverPage() {
   return {
     /* status */
     cpuPct: 0, memTotal: 0, memUsed: 0, memFree: 0,
-    swapTotal: 0, swapUsed: 0, diskTotal: 0, diskUsed: 0,
+    swapTotal: 0, swapUsed: 0, diskTotal: 0, diskUsed: 0, playersOnline: 0,
     services: [], glinkd: [], glinkdOpen: false,
     pctOf(used, total) { return total ? Math.round(used / total * 100) : 0; },
     fmtPart(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + 'G' : Math.round(mb) + 'M'; },
@@ -774,6 +778,7 @@ function serverPage() {
         this.swapUsed  = d.swap_used  ?? 0;
         this.diskTotal = d.disk_total ?? 0;
         this.diskUsed  = d.disk_used  ?? 0;
+        this.playersOnline = d.players_online ?? 0;
         this.services = d.services || [];
         this.glinkd   = d.glinkd   || [];
       } catch(e) {}
