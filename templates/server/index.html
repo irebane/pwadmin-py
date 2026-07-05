@@ -216,18 +216,19 @@
         <!-- CPU / RAM / Swap / Disk cards -->
         <div class="grid grid-cols-4 gap-3 mb-4">
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
+            <div class="text-xs text-slate-600 mb-0.5">CPU</div>
             <div class="text-base font-semibold"
               :class="cpuPct > 80 ? 'text-red-400' : cpuPct > 50 ? 'text-amber-400' : 'text-sky-400'"
               x-text="cpuPct + '%'"></div>
-            <div class="text-xs text-slate-600 mt-0.5">CPU</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
+            <div class="text-xs text-slate-600 mb-0.5">Memory</div>
             <div class="text-base font-semibold">
               <span :class="colorForPct(pctOf(memUsed, memTotal))" x-text="fmtPart(memUsed)"></span><span class="text-slate-500">/</span><span class="text-slate-400" x-text="fmtPart(memTotal)"></span>
             </div>
-            <div class="text-xs text-slate-600 mt-0.5">Memory</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
+            <div class="text-xs text-slate-600 mb-0.5">Swap</div>
             <template x-if="swapTotal === 0">
               <div class="text-base font-semibold text-slate-600">none</div>
             </template>
@@ -236,13 +237,12 @@
                 <span :class="colorForPct(pctOf(swapUsed, swapTotal))" x-text="fmtPart(swapUsed)"></span><span class="text-slate-500">/</span><span class="text-slate-400" x-text="fmtPart(swapTotal)"></span>
               </div>
             </template>
-            <div class="text-xs text-slate-600 mt-0.5">Swap</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
+            <div class="text-xs text-slate-600 mb-0.5">Disk</div>
             <div class="text-base font-semibold">
               <span :class="colorForPct(pctOf(diskUsed, diskTotal))" x-text="fmtPart(diskUsed)"></span><span class="text-slate-500">/</span><span class="text-slate-400" x-text="fmtPart(diskTotal)"></span>
             </div>
-            <div class="text-xs text-slate-600 mt-0.5">Disk</div>
           </div>
         </div>
 
