@@ -388,36 +388,53 @@
 
       <!-- INSTANCE AUTOSTART ───────────────────────────────────────── -->
       <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+        <div class="px-5 py-3 border-b border-slate-800">
           <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Instance Autostart</h2>
-          <span class="text-xs font-semibold" :class="autostartEnabled ? 'text-emerald-400' : 'text-slate-600'"
-            x-text="autostartEnabled ? 'Enabled' : 'Disabled'"></span>
         </div>
-        <div class="p-4">
-          <p class="text-xs text-slate-500 leading-relaxed mb-3">
-            Watches for player zone-entry requests <span class="text-slate-400">and</span> login
-            attempts, and auto-starts the target instance if it's offline — this covers a
-            character whose saved position is in a zone that's currently down (crashed, manually
-            stopped, or never restarted after a server reboot). Auto-stops idle instances after
-            the timeout below — based on time since the last entry/login request, not live player
-            count, so a populated instance with no new arrivals can still be stopped.
-            <span class="text-slate-400">World</span>-type zones and the main world are never
-            auto-stopped.
-          </p>
-          <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" x-model="autostartEnabled" @change="saveAutostart()"
-                class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 cursor-pointer">
-              <span class="text-xs text-slate-300 select-none">Enable autostart / auto-stop</span>
-            </label>
-            <div class="flex items-center gap-2 ml-auto">
-              <span class="text-xs text-slate-500">Idle timeout</span>
-              <input type="number" x-model.number="idleMinutes" @change="saveAutostart()" min="5" max="1440"
-                class="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
+        <div class="p-4 space-y-2.5">
+
+          <!-- Auto-Start -->
+          <div class="bg-slate-800/60 rounded-lg px-3 py-2.5 flex items-center justify-between">
+            <div class="relative group">
+              <span class="text-xs text-slate-300 cursor-help border-b border-dashed border-slate-600">Auto-Start</span>
+              <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                <p class="text-xs text-slate-300 font-medium mb-1.5">Start instances on demand</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Watches for player zone-entry requests <span class="text-slate-300">and</span> login attempts, and starts the target instance if it's offline.</p>
+                <p class="text-xs text-slate-400 leading-relaxed">Covers a character whose saved position is in a zone that's currently down — crashed, manually stopped, or never restarted after a server reboot.</p>
+              </div>
+            </div>
+            <button type="button" @click="autostartEnabled = !autostartEnabled; saveAutostart()"
+              class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
+              :class="autostartEnabled ? 'bg-emerald-600' : 'bg-slate-700'">
+              <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                :class="autostartEnabled ? 'translate-x-5' : 'translate-x-1'"></span>
+            </button>
+          </div>
+
+          <!-- Auto-Stop -->
+          <div class="bg-slate-800/60 rounded-lg px-3 py-2.5 flex items-center justify-between gap-3">
+            <div class="relative group">
+              <span class="text-xs text-slate-300 cursor-help border-b border-dashed border-slate-600">Auto-Stop</span>
+              <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                <p class="text-xs text-slate-300 font-medium mb-1.5">Stop idle instances automatically</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Stops an instance after the idle timeout below — based on time since the last entry/login request, not live player count, so a populated instance with no new arrivals can still be stopped.</p>
+                <p class="text-xs text-slate-400 leading-relaxed"><span class="text-slate-300">World</span>-type zones and the main world are never auto-stopped.</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 ml-auto shrink-0">
+              <input type="number" x-model.number="idleMinutes" @change="saveAutostart()" min="1" max="1440"
+                class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
               <span class="text-xs text-slate-500">min</span>
+              <button type="button" @click="autostopEnabled = !autostopEnabled; saveAutostart()"
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
+                :class="autostopEnabled ? 'bg-emerald-600' : 'bg-slate-700'">
+                <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                  :class="autostopEnabled ? 'translate-x-5' : 'translate-x-1'"></span>
+              </button>
             </div>
           </div>
-          <p x-show="autostartMsg" x-text="autostartMsg" class="mt-2 text-xs text-emerald-400 font-mono"></p>
+
+          <p x-show="autostartMsg" x-text="autostartMsg" class="text-xs text-emerald-400 font-mono"></p>
         </div>
       </div>
 
@@ -672,7 +689,7 @@ function serverPage() {
     },
 
     /* instance autostart */
-    autostartEnabled: false, idleMinutes: 60, autostartMsg: '',
+    autostartEnabled: false, autostopEnabled: false, idleMinutes: 60, autostartMsg: '',
     autostartLog: [], autoLogOpen: true, autoPage: 1, autoPerPage: 20,
     get autoPageCount() { return Math.max(1, Math.ceil(this.autostartLog.length / this.autoPerPage)); },
     get pagedAutoLog() {
@@ -690,7 +707,8 @@ function serverPage() {
         const r = await fetch('/api/server/autostart');
         if (!r.ok) return;
         const d = await r.json();
-        this.autostartEnabled = !!d.enabled;
+        this.autostartEnabled = !!d.autostart_enabled;
+        this.autostopEnabled  = !!d.autostop_enabled;
         this.idleMinutes = d.idle_minutes ?? 60;
         this.autostartLog = d.log || [];
       } catch(e) {}
@@ -701,11 +719,15 @@ function serverPage() {
         const r = await fetch('/api/server/autostart', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({enabled: this.autostartEnabled, idle_minutes: this.idleMinutes}),
+          body: JSON.stringify({
+            autostart_enabled: this.autostartEnabled,
+            autostop_enabled: this.autostopEnabled,
+            idle_minutes: this.idleMinutes,
+          }),
         });
-        if (!r.ok) { this.autostartEnabled = !this.autostartEnabled; return; }
-        this.autostartMsg = this.autostartEnabled ? 'Autostart enabled' : 'Autostart disabled';
-        setTimeout(() => this.autostartMsg = '', 3000);
+        if (!r.ok) { await this.refreshAutostart(); return; }
+        this.autostartMsg = 'Saved';
+        setTimeout(() => this.autostartMsg = '', 2000);
         await this.refreshAutostart();
       } catch(e) {}
     },

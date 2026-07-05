@@ -55,7 +55,7 @@ _STATE_FILE = Path(__file__).parent.parent.parent / "data" / "autostart_state.js
 _ACTIVITY_FILE = Path(__file__).parent.parent.parent / "data" / "instance_watch_log.json"
 
 START_COOLDOWN_SECONDS = 30      # per-zone dedup: don't re-trigger gs_zone.sh start on retries
-IDLE_CHECK_INTERVAL_SECONDS = 300
+IDLE_CHECK_INTERVAL_SECONDS = 60  # was 300 — with a 60s tick, a zone stops within idle_minutes+1m
 TAIL_POLL_INTERVAL_SECONDS = 1.5
 MAX_LOG_ENTRIES = 300
 DEFAULT_IDLE_MINUTES = 60
@@ -70,7 +70,8 @@ _tag_zone: dict[int, str] = {}
 _last_activity: dict[str, float] = {}
 _last_start_attempt: dict[str, float] = {}
 _log_entries: list[dict] = []
-_tasks: list[asyncio.Task] = []
+_autostart_tasks: list[asyncio.Task] = []
+_autostop_tasks: list[asyncio.Task] = []
 _pending_tasks: set[asyncio.Task] = set()  # strong refs for fire-and-forget spawns; see _spawn()
 _offset = 0
 _login_offset = 0
@@ -97,12 +98,29 @@ def _write_state(state: dict) -> None:
     _STATE_FILE.write_text(json.dumps(state))
 
 
-def is_enabled() -> bool:
-    return bool(_read_state().get("enabled", False))
+def _effective_state() -> dict:
+    """Auto-start and auto-stop are independently toggleable. `enabled` is the old,
+    single-flag key from before the split — read as a fallback default for both so existing
+    persisted state keeps working, but never written back once either flag is set explicitly."""
+    state = _read_state()
+    legacy = state.get("enabled", False)
+    return {
+        "autostart_enabled": bool(state.get("autostart_enabled", legacy)),
+        "autostop_enabled": bool(state.get("autostop_enabled", legacy)),
+        "idle_minutes": int(state.get("idle_minutes", DEFAULT_IDLE_MINUTES)),
+    }
+
+
+def is_autostart_enabled() -> bool:
+    return _effective_state()["autostart_enabled"]
+
+
+def is_autostop_enabled() -> bool:
+    return _effective_state()["autostop_enabled"]
 
 
 def get_idle_minutes() -> int:
-    return int(_read_state().get("idle_minutes", DEFAULT_IDLE_MINUTES))
+    return _effective_state()["idle_minutes"]
 
 
 def get_log() -> list[dict]:
@@ -333,6 +351,25 @@ async def _tail_login_log() -> None:
         await asyncio.sleep(TAIL_POLL_INTERVAL_SECONDS)
 
 
+def _eligible_for_autostop(zone_id: str) -> bool:
+    if zone_id in PROTECTED_ZONES:
+        return False
+    info = settings.gs_zones_dict.get(zone_id)
+    # "world"-type zones are protected the same way "Stop Maps (Keep World)" protects them
+    return bool(info) and info.get("type") != "world"
+
+
+def _seed_activity_baselines() -> None:
+    """Seed a baseline for every currently running, stoppable zone at the moment auto-stop
+    turns on, so idle timers count from *now*, not from whenever the first periodic check
+    happens to land — the old lazy-seed-on-first-check design silently added a full extra
+    IDLE_CHECK_INTERVAL_SECONDS of delay before a zone could ever be stopped."""
+    now = time.time()
+    for zone_id in get_running_zone_ids():
+        if _eligible_for_autostop(zone_id):
+            _last_activity.setdefault(zone_id, now)
+
+
 async def _idle_check_loop() -> None:
     while True:
         await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
@@ -341,76 +378,90 @@ async def _idle_check_loop() -> None:
             now = time.time()
             zones = settings.gs_zones_dict
             for zone_id in get_running_zone_ids():
-                if zone_id in PROTECTED_ZONES:
-                    continue
-                info = zones.get(zone_id)
-                # "world"-type zones are protected the same way "Stop Maps (Keep World)" protects them
-                if not info or info.get("type") == "world":
+                if not _eligible_for_autostop(zone_id):
                     continue
                 last = _last_activity.get(zone_id)
                 if last is None:
-                    # no observed entry event yet since the watcher started — seed a baseline
-                    # now instead of stopping immediately on zero data
+                    # appeared after auto-stop was enabled (e.g. autostart brought it up) —
+                    # seed now rather than stopping immediately on zero data
                     _last_activity[zone_id] = now
                     continue
                 if now - last >= idle_seconds:
-                    await _autostop_zone(zone_id, info.get("name", zone_id))
+                    await _autostop_zone(zone_id, zones.get(zone_id, {}).get("name", zone_id))
         except asyncio.CancelledError:
             raise
         except Exception as e:
             _log_error_throttled("idle-check", e)
 
 
-def _reset_runtime_state() -> None:
-    global _offset, _login_offset
+def _start_autostart() -> None:
+    global _autostart_tasks, _offset, _login_offset
+    if _autostart_tasks:
+        return
     _tag_zone.clear()
     _tag_zone.update(_build_tag_zone_map())
-    _last_activity.clear()
     _last_start_attempt.clear()
     _offset = HOOK_LOG_PATH.stat().st_size if HOOK_LOG_PATH.exists() else 0
     _login_offset = AUTHD_LOG_PATH.stat().st_size if AUTHD_LOG_PATH.exists() else 0
-
-
-def start() -> None:
-    global _tasks
-    if _tasks:
-        return
-    _reset_runtime_state()
-    _tasks = [
+    _autostart_tasks = [
         asyncio.create_task(_tail_hook_log()),
         asyncio.create_task(_tail_login_log()),
-        asyncio.create_task(_idle_check_loop()),
     ]
-    _log(f"Autostart watcher enabled — tracking {len(_tag_zone)} zone(s), idle timeout {get_idle_minutes()}m")
+    _log(f"Auto-start enabled — tracking {len(_tag_zone)} zone(s)")
     _spawn(_sweep_all_accounts())
 
 
-def stop() -> None:
-    global _tasks
-    for t in _tasks:
+def _stop_autostart() -> None:
+    global _autostart_tasks
+    for t in _autostart_tasks:
         t.cancel()
-    if _tasks:
-        _log("Autostart watcher disabled")
-    _tasks = []
+    if _autostart_tasks:
+        _log("Auto-start disabled")
+    _autostart_tasks = []
 
 
-def set_enabled(enabled: bool, idle_minutes: int | None = None) -> None:
-    state = _read_state()
-    state["enabled"] = enabled
-    if idle_minutes is not None:
-        state["idle_minutes"] = max(5, int(idle_minutes))
+def _start_autostop() -> None:
+    global _autostop_tasks
+    if _autostop_tasks:
+        return
+    _seed_activity_baselines()
+    _autostop_tasks = [asyncio.create_task(_idle_check_loop())]
+    _log(f"Auto-stop enabled — idle timeout {get_idle_minutes()}m")
+
+
+def _stop_autostop() -> None:
+    global _autostop_tasks
+    for t in _autostop_tasks:
+        t.cancel()
+    if _autostop_tasks:
+        _log("Auto-stop disabled")
+    _autostop_tasks = []
+
+
+def set_autostart_enabled(enabled: bool) -> None:
+    state = _effective_state()
+    state["autostart_enabled"] = enabled
     _write_state(state)
-    if enabled:
-        start()
-    else:
-        stop()
+    _start_autostart() if enabled else _stop_autostart()
+
+
+def set_autostop_enabled(enabled: bool, idle_minutes: int | None = None) -> None:
+    state = _effective_state()
+    state["autostop_enabled"] = enabled
+    if idle_minutes is not None:
+        state["idle_minutes"] = max(1, int(idle_minutes))
+    _write_state(state)
+    _start_autostop() if enabled else _stop_autostop()
 
 
 def init_on_startup() -> None:
     _load_log()
-    if is_enabled():
-        start()
+    if is_autostart_enabled():
+        _start_autostart()
+    if is_autostop_enabled():
+        _start_autostop()
 
 
 def shutdown() -> None:
-    stop()
+    _stop_autostart()
+    _stop_autostop()

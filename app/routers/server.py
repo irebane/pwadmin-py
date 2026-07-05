@@ -154,14 +154,16 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
 
 
 class AutostartBody(BaseModel):
-    enabled: bool
+    autostart_enabled: bool
+    autostop_enabled: bool
     idle_minutes: int = 60
 
 
 @router.get("/autostart")
 async def autostart_status(user: dict = Depends(require_admin)):
     return {
-        "enabled": instance_watch.is_enabled(),
+        "autostart_enabled": instance_watch.is_autostart_enabled(),
+        "autostop_enabled": instance_watch.is_autostop_enabled(),
         "idle_minutes": instance_watch.get_idle_minutes(),
         "log": instance_watch.get_log(),
     }
@@ -169,8 +171,13 @@ async def autostart_status(user: dict = Depends(require_admin)):
 
 @router.post("/autostart")
 async def autostart_set(body: AutostartBody, user: dict = Depends(require_admin)):
-    instance_watch.set_enabled(body.enabled, body.idle_minutes)
-    return {"enabled": body.enabled, "idle_minutes": instance_watch.get_idle_minutes()}
+    instance_watch.set_autostart_enabled(body.autostart_enabled)
+    instance_watch.set_autostop_enabled(body.autostop_enabled, body.idle_minutes)
+    return {
+        "autostart_enabled": instance_watch.is_autostart_enabled(),
+        "autostop_enabled": instance_watch.is_autostop_enabled(),
+        "idle_minutes": instance_watch.get_idle_minutes(),
+    }
 
 
 _ITEMS_JSON  = Path("data/pw_items.json")
