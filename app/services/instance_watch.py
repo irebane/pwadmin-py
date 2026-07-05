@@ -297,6 +297,9 @@ async def _tail_login_log() -> None:
     global _login_offset
     while True:
         try:
+            with open("/tmp/login_tail_debug.log", "a") as dbgf:
+                dbgf.write(f"{time.time()} offset={_login_offset} exists={AUTHD_LOG_PATH.exists()} "
+                           f"size={AUTHD_LOG_PATH.stat().st_size if AUTHD_LOG_PATH.exists() else 'n/a'}\n")
             if AUTHD_LOG_PATH.exists():
                 size = AUTHD_LOG_PATH.stat().st_size
                 if size < _login_offset:
