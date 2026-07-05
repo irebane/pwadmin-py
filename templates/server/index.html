@@ -433,13 +433,13 @@
         </div>
         <div x-show="autoLogOpen" class="px-4 py-3">
           <template x-if="autostartLog.length === 0">
-            <p class="text-xs text-slate-700 italic">No autostart/auto-stop actions yet</p>
+            <p class="text-xs text-slate-700 italic">No zone start/stop activity yet</p>
           </template>
           <template x-for="(entry, i) in pagedAutoLog" :key="i">
             <div class="text-xs font-mono py-0.5 border-b border-slate-800/50 last:border-0 flex gap-2"
               :class="entry.text.includes('FAILED') || entry.text.includes('ERROR') ? 'text-red-400'
-                : entry.text.includes('Auto-stopped') ? 'text-amber-400'
-                : entry.text.includes('Auto-started') ? 'text-emerald-400'
+                : entry.text.includes('stopped') ? 'text-amber-400'
+                : entry.text.includes('started') || entry.text.includes('triggered') ? 'text-emerald-400'
                 : 'text-slate-500'">
               <span class="text-slate-600 shrink-0" x-text="new Date(entry.ts * 1000).toLocaleTimeString()"></span>
               <span x-text="entry.text"></span>
@@ -824,8 +824,7 @@ function serverPage() {
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) { this.mapMsg = d.detail || action + ' failed'; return; }
-        this.addLog('Map ' + action + (zone ? ' ' + zone : '') + ' sent');
-        setTimeout(() => this.refreshMaps(), 1500);
+        setTimeout(() => { this.refreshMaps(); this.refreshAutostart(); }, 1500);
       } catch(e) { this.mapMsg = 'Request failed'; }
     },
 
@@ -856,7 +855,7 @@ function serverPage() {
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) { this.mapMsg = d.detail || 'startmaps failed'; return; }
-        this.addLog('Start all maps sent');
+        this.refreshAutostart();
         let t = 0;
         const iv = setInterval(() => {
           t += 3000; this.refreshMaps();

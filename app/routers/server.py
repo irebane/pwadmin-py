@@ -111,6 +111,8 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
         zones = settings.gs_zones_dict
         if body.action == "startmaps":
             args = list(zones.keys())
+            # staggered (~20s/zone) and memory-gated, so we can't know per-zone outcomes here
+            instance_watch.log_event(f"Manually triggered 'Start All Maps' — by {admin_name}")
         else:  # stopmaps — protect World-type zones (gs01 is always protected by the script itself)
             args = [z for z, info in zones.items() if info.get("type") == "world"]
             about_to_stop = get_running_zone_ids() - set(args) - {"gs01"}
@@ -141,9 +143,11 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
             raise HTTPException(409, detail="Zone is already running.")
         if "Insufficient memory" in output:
             raise HTTPException(503, detail=output)
+        name = zones.get(body.zone, {}).get("name", body.zone)
         if body.action == "stop" and "Stopped" in output:
-            name = zones.get(body.zone, {}).get("name", body.zone)
             instance_watch.log_event(f"Manually stopped {body.zone} ({name}) — by {admin_name}")
+        elif body.action == "start" and "Started" in output:
+            instance_watch.log_event(f"Manually started {body.zone} ({name}) — by {admin_name}")
         return {"ok": True}
     except asyncio.TimeoutError:
         raise HTTPException(504, detail="Zone command timed out")
