@@ -222,21 +222,26 @@
             <div class="text-xs text-slate-600 mt-0.5">CPU</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
-            <div class="text-base font-semibold"
-              :class="pctOf(memUsed, memTotal) > 85 ? 'text-red-400' : pctOf(memUsed, memTotal) > 60 ? 'text-amber-400' : 'text-slate-200'"
-              x-text="fmtUsedTotal(memUsed, memTotal)"></div>
+            <div class="text-base font-semibold">
+              <span :class="colorForPct(pctOf(memUsed, memTotal))" x-text="fmtPart(memUsed)"></span><span class="text-slate-500">/</span><span class="text-slate-400" x-text="fmtPart(memTotal)"></span>
+            </div>
             <div class="text-xs text-slate-600 mt-0.5">Memory</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
-            <div class="text-base font-semibold"
-              :class="swapTotal === 0 ? 'text-slate-600' : pctOf(swapUsed, swapTotal) > 30 ? 'text-red-400' : 'text-slate-200'"
-              x-text="swapTotal ? fmtUsedTotal(swapUsed, swapTotal) : 'none'"></div>
+            <template x-if="swapTotal === 0">
+              <div class="text-base font-semibold text-slate-600">none</div>
+            </template>
+            <template x-if="swapTotal > 0">
+              <div class="text-base font-semibold">
+                <span :class="colorForPct(pctOf(swapUsed, swapTotal))" x-text="fmtPart(swapUsed)"></span><span class="text-slate-500">/</span><span class="text-slate-400" x-text="fmtPart(swapTotal)"></span>
+              </div>
+            </template>
             <div class="text-xs text-slate-600 mt-0.5">Swap</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
-            <div class="text-base font-semibold"
-              :class="pctOf(diskUsed, diskTotal) > 90 ? 'text-red-400' : pctOf(diskUsed, diskTotal) > 75 ? 'text-amber-400' : 'text-slate-200'"
-              x-text="fmtUsedTotal(diskUsed, diskTotal)"></div>
+            <div class="text-base font-semibold">
+              <span :class="colorForPct(pctOf(diskUsed, diskTotal))" x-text="fmtPart(diskUsed)"></span><span class="text-slate-500">/</span><span class="text-slate-400" x-text="fmtPart(diskTotal)"></span>
+            </div>
             <div class="text-xs text-slate-600 mt-0.5">Disk</div>
           </div>
         </div>
@@ -664,10 +669,11 @@ function serverPage() {
     swapTotal: 0, swapUsed: 0, diskTotal: 0, diskUsed: 0,
     services: [], glinkd: [], glinkdOpen: false,
     pctOf(used, total) { return total ? Math.round(used / total * 100) : 0; },
-    fmtUsedTotal(usedMb, totalMb) {
-      if (!totalMb) return '—';
-      const fmt = (mb) => mb >= 1024 ? (mb / 1024).toFixed(1) + 'G' : Math.round(mb) + 'M';
-      return fmt(usedMb) + '/' + fmt(totalMb);
+    fmtPart(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + 'G' : Math.round(mb) + 'M'; },
+    colorForPct(pct) {
+      if (pct > 85) return 'text-red-400';
+      if (pct > 60) return 'text-amber-400';
+      return 'text-emerald-400';
     },
     controlling: false, controlAction: '', controlPhase: '', controlEstimate: '', controlProgress: 0,
     onlineMaps: [], availMaps: [], selectedOnline: [], selectedAvail: [], mapMsg: '',
