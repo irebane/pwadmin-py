@@ -29,11 +29,14 @@ Both paths funnel into _maybe_autostart(), which calls /home/gs_zone.sh start <z
 resolved zone isn't already running (with a per-zone cooldown to dedup retries). Last-seen-
 activity per zone is also tracked here for the idle auto-stop side, if enabled.
 
-Caveat: neither trigger reflects ongoing presence, only "someone just tried to get into this
-zone". "Idle" means "no one has switched into or logged into this zone recently" — a zone with
-players who never leave and never re-trigger either signal could still look idle. There is
-currently no cheaper signal available for live per-zone player counts. Full details in
-docs/zone-lifecycle-and-gm-protocol.md.
+The idle side (_idle_check_loop) does NOT rely solely on that request-based activity timer —
+_get_occupied_zones() checks real occupancy before ever stopping anything: MySQL's `online`
+table (authd's recordonline/recordoffline, authoritative for "is this account connected right
+now") for who's online, cross-referenced with GameClient.get_user_roles()'s current world_tag
+per account (gamedbd persists position continuously via periodic checkpoints while playing,
+not just at login). A zone with a real player in it is never stopped, no matter how long the
+idle counter says — the counter is only a fallback for zones with no player currently in them.
+Full details in docs/zone-lifecycle-and-gm-protocol.md.
 
 Runs as background asyncio tasks inside the pwadmin-py process itself (it already runs
 directly on the game server, see server_status.py / server_config.py for the same
@@ -370,6 +373,41 @@ def _seed_activity_baselines() -> None:
             _last_activity.setdefault(zone_id, now)
 
 
+async def _get_occupied_zones() -> set[str]:
+    """Real occupancy check, independent of the idle-request-based activity timer (which only
+    reflects "someone requested this zone recently", not "someone is still in it"). Two data
+    sources, both already used elsewhere in this module:
+    - MySQL's `online` table — populated by authd's recordonline/recordoffline stored
+      procedures, authoritative for "is this account connected right now".
+    - GameClient.get_user_roles() for each online account's characters' current world_tag —
+      gamedbd persists position continuously via periodic checkpoints while playing, not just
+      at login, so this reflects roughly where they are right now, not a stale snapshot.
+    """
+    try:
+        from sqlalchemy import text
+        from app.database import engine
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT ID FROM online"))
+            online_ids = [row[0] for row in result.fetchall()]
+    except Exception as e:
+        _log_error_throttled("occupancy query (online table)", e)
+        return set()
+
+    occupied: set[str] = set()
+    for uid in online_ids:
+        try:
+            client = GameClient(host="localhost", port=GAMEDBD_PORT)
+            roles = await client.get_user_roles(uid)
+        except Exception as e:
+            _log_error_throttled("occupancy query (gamedbd)", e)
+            continue
+        for role in roles:
+            zone_id = _tag_zone.get(role.get("map"))
+            if zone_id:
+                occupied.add(zone_id)
+    return occupied
+
+
 async def _idle_check_loop() -> None:
     while True:
         await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
@@ -377,8 +415,16 @@ async def _idle_check_loop() -> None:
             idle_seconds = get_idle_minutes() * 60
             now = time.time()
             zones = settings.gs_zones_dict
-            for zone_id in get_running_zone_ids():
-                if not _eligible_for_autostop(zone_id):
+            candidates = [z for z in get_running_zone_ids() if _eligible_for_autostop(z)]
+            if not candidates:
+                continue
+            occupied = await _get_occupied_zones()
+            for zone_id in candidates:
+                if zone_id in occupied:
+                    # a real player is actually there right now — never stop it, no matter
+                    # what the idle counter says. Bump the timer too, so it doesn't fire the
+                    # instant they leave without a fresh request event.
+                    _last_activity[zone_id] = now
                     continue
                 last = _last_activity.get(zone_id)
                 if last is None:
@@ -424,6 +470,10 @@ def _start_autostop() -> None:
     global _autostop_tasks
     if _autostop_tasks:
         return
+    if not _tag_zone:
+        # needed to resolve occupancy checks (world_tag -> zone_id); auto-start builds this
+        # too, but auto-stop must work standalone without auto-start ever being enabled
+        _tag_zone.update(_build_tag_zone_map())
     _seed_activity_baselines()
     _autostop_tasks = [asyncio.create_task(_idle_check_loop())]
     _log(f"Auto-stop enabled — idle timeout {get_idle_minutes()}m")

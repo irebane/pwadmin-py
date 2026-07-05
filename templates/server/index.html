@@ -355,7 +355,7 @@
                 <span class="text-xs text-slate-300 cursor-help border-b border-dashed border-slate-600">Auto-Stop</span>
                 <div class="absolute top-full left-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                   <p class="text-xs text-slate-300 font-medium mb-1.5">Stop idle instances automatically</p>
-                  <p class="text-xs text-slate-400 leading-relaxed mb-2">Stops an instance after the idle timeout below — based on time since the last entry/login request, not live player count, so a populated instance with no new arrivals can still be stopped.</p>
+                  <p class="text-xs text-slate-400 leading-relaxed mb-2">Stops an instance after the idle timeout below, but only if it's actually empty — checked directly against who's currently online and where, not just "no new arrivals". A zone with a real player in it is never stopped, no matter what the counter says.</p>
                   <p class="text-xs text-slate-400 leading-relaxed"><span class="text-slate-300">World</span>-type zones and the main world are never auto-stopped.</p>
                 </div>
               </div>
