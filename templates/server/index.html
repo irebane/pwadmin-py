@@ -386,6 +386,73 @@
         </div>
       </div>
 
+      <!-- INSTANCE AUTOSTART ───────────────────────────────────────── -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+          <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Instance Autostart</h2>
+          <span class="text-xs font-semibold" :class="autostartEnabled ? 'text-emerald-400' : 'text-slate-600'"
+            x-text="autostartEnabled ? 'Enabled' : 'Disabled'"></span>
+        </div>
+        <div class="p-4">
+          <p class="text-xs text-slate-500 leading-relaxed mb-3">
+            Watches for player zone-entry requests and auto-starts the target instance if it's
+            offline. Auto-stops idle instances after the timeout below — based on time since the
+            last entry request, not live player count, so a populated instance with no new
+            arrivals can still be stopped. <span class="text-slate-400">World</span>-type zones
+            and the main world are never auto-stopped.
+          </p>
+          <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" x-model="autostartEnabled" @change="saveAutostart()"
+                class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 cursor-pointer">
+              <span class="text-xs text-slate-300 select-none">Enable autostart / auto-stop</span>
+            </label>
+            <div class="flex items-center gap-2 ml-auto">
+              <span class="text-xs text-slate-500">Idle timeout</span>
+              <input type="number" x-model.number="idleMinutes" @change="saveAutostart()" min="5" max="1440"
+                class="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
+              <span class="text-xs text-slate-500">min</span>
+            </div>
+          </div>
+          <p x-show="autostartMsg" x-text="autostartMsg" class="mt-2 text-xs text-emerald-400 font-mono"></p>
+        </div>
+      </div>
+
+      <!-- INSTANCE ACTIVITY LOG ────────────────────────────────────── -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 cursor-pointer select-none"
+             @click="autoLogOpen = !autoLogOpen">
+          <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Instance Activity</h2>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-600" x-text="autostartLog.length + ' entries'"></span>
+            <span class="text-slate-600 text-xs" x-text="autoLogOpen ? '▲' : '▼'"></span>
+          </div>
+        </div>
+        <div x-show="autoLogOpen" class="px-4 py-3">
+          <template x-if="autostartLog.length === 0">
+            <p class="text-xs text-slate-700 italic">No autostart/auto-stop actions yet</p>
+          </template>
+          <template x-for="(entry, i) in pagedAutoLog" :key="i">
+            <div class="text-xs font-mono py-0.5 border-b border-slate-800/50 last:border-0 flex gap-2"
+              :class="entry.text.includes('FAILED') || entry.text.includes('ERROR') ? 'text-red-400'
+                : entry.text.includes('Auto-stopped') ? 'text-amber-400'
+                : entry.text.includes('Auto-started') ? 'text-emerald-400'
+                : 'text-slate-500'">
+              <span class="text-slate-600 shrink-0" x-text="new Date(entry.ts * 1000).toLocaleTimeString()"></span>
+              <span x-text="entry.text"></span>
+            </div>
+          </template>
+          <div x-show="autoPageCount > 1"
+               class="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
+            <button @click="autoPage = Math.max(1, autoPage - 1)" :disabled="autoPage === 1"
+              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition font-semibold">← Prev</button>
+            <span class="text-xs text-slate-600" x-text="'Page ' + autoPage + ' / ' + autoPageCount"></span>
+            <button @click="autoPage = Math.min(autoPageCount, autoPage + 1)" :disabled="autoPage === autoPageCount"
+              class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded transition font-semibold">Next →</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ITEM DATABASE ───────────────────────────────────────────── -->
       <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden" x-data="itemDb()">
         <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
@@ -601,9 +668,43 @@ function serverPage() {
       return this.log.slice(s, s + this.logPerPage);
     },
 
+    /* instance autostart */
+    autostartEnabled: false, idleMinutes: 60, autostartMsg: '',
+    autostartLog: [], autoLogOpen: true, autoPage: 1, autoPerPage: 20,
+    get autoPageCount() { return Math.max(1, Math.ceil(this.autostartLog.length / this.autoPerPage)); },
+    get pagedAutoLog() {
+      const s = (this.autoPage - 1) * this.autoPerPage;
+      return this.autostartLog.slice(s, s + this.autoPerPage);
+    },
+
     async init() {
-      await Promise.all([this.refreshStatus(), this.refreshMaps(), this.loadConfig(), this.loadLog()]);
-      setInterval(() => { this.refreshStatus(); this.refreshMaps(); }, 5000);
+      await Promise.all([this.refreshStatus(), this.refreshMaps(), this.loadConfig(), this.loadLog(), this.refreshAutostart()]);
+      setInterval(() => { this.refreshStatus(); this.refreshMaps(); this.refreshAutostart(); }, 5000);
+    },
+
+    async refreshAutostart() {
+      try {
+        const r = await fetch('/api/server/autostart');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.autostartEnabled = !!d.enabled;
+        this.idleMinutes = d.idle_minutes ?? 60;
+        this.autostartLog = d.log || [];
+      } catch(e) {}
+    },
+
+    async saveAutostart() {
+      try {
+        const r = await fetch('/api/server/autostart', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({enabled: this.autostartEnabled, idle_minutes: this.idleMinutes}),
+        });
+        if (!r.ok) { this.autostartEnabled = !this.autostartEnabled; return; }
+        this.autostartMsg = this.autostartEnabled ? 'Autostart enabled' : 'Autostart disabled';
+        setTimeout(() => this.autostartMsg = '', 3000);
+        await this.refreshAutostart();
+      } catch(e) {}
     },
 
     async refreshStatus() {

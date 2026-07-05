@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from app.database import engine, Base
 from app.routers import auth, accounts, characters, game, maps, gshop, items, server, activity_log
 from app.auth.sessions import read_session
+from app.services import instance_watch
 
 
 def _require_session(request: Request):
@@ -22,7 +23,9 @@ def _require_session(request: Request):
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    instance_watch.init_on_startup()
     yield
+    instance_watch.shutdown()
 
 
 _CSRF_EXEMPT = {"/api/login", "/api/logout", "/api/register"}

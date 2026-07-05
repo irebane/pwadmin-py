@@ -10,6 +10,7 @@ from app.deps import require_admin
 from app.config import settings
 from app.services.server_config import read_game_config, save_game_config
 from app.services.server_status import get_server_status, get_maps_status
+from app.services import instance_watch
 from pydantic import BaseModel
 
 _LOG_FILE = Path(__file__).parent.parent.parent / "data" / "activity_log.json"
@@ -137,6 +138,26 @@ async def maps_control(body: MapControlBody, user: dict = Depends(require_admin)
         return {"ok": True}
     except asyncio.TimeoutError:
         raise HTTPException(504, detail="Zone command timed out")
+
+
+class AutostartBody(BaseModel):
+    enabled: bool
+    idle_minutes: int = 60
+
+
+@router.get("/autostart")
+async def autostart_status(user: dict = Depends(require_admin)):
+    return {
+        "enabled": instance_watch.is_enabled(),
+        "idle_minutes": instance_watch.get_idle_minutes(),
+        "log": instance_watch.get_log(),
+    }
+
+
+@router.post("/autostart")
+async def autostart_set(body: AutostartBody, user: dict = Depends(require_admin)):
+    instance_watch.set_enabled(body.enabled, body.idle_minutes)
+    return {"enabled": body.enabled, "idle_minutes": instance_watch.get_idle_minutes()}
 
 
 _ITEMS_JSON  = Path("data/pw_items.json")

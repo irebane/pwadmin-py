@@ -116,11 +116,9 @@ async def get_server_status() -> dict:
     }
 
 
-async def get_maps_status() -> dict:
+def get_running_zone_ids() -> set[str]:
+    """Scan /proc for live `./gs <zone>` processes. Shared by maps status and instance_watch."""
     import glob, re
-    zones = settings.gs_zones_dict
-    online, offline = [], []
-    # Read all /proc cmdlines once
     running_ids: set[str] = set()
     for cmdfile in glob.glob("/proc/[0-9]*/cmdline"):
         try:
@@ -130,6 +128,13 @@ async def get_maps_status() -> dict:
                 running_ids.add(m.group(1))
         except Exception:
             continue
+    return running_ids
+
+
+async def get_maps_status() -> dict:
+    zones = settings.gs_zones_dict
+    online, offline = [], []
+    running_ids = get_running_zone_ids()
     for zone_id, info in zones.items():
         name = info.get("name", zone_id) if isinstance(info, dict) else info
         ztype = info.get("type", "") if isinstance(info, dict) else ""

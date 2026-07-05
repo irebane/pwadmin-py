@@ -8,3 +8,6 @@ dist/
 MISMATCH.md
 my_deployment.md
 data/backups/
+data/activity_log.json
+data/autostart_state.json
+data/instance_watch_log.json
