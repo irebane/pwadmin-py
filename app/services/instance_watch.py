@@ -234,7 +234,8 @@ async def _ensure_user_zones_started(user_id: int) -> None:
     try:
         client = GameClient(host="localhost", port=settings.server_port)
         roles = await client.get_user_roles(user_id)
-    except Exception:
+    except Exception as e:
+        _log_error_throttled("gamedbd query", e)
         return
     for role in roles:
         _maybe_autostart(_tag_zone.get(role.get("map")))
@@ -250,10 +251,22 @@ async def _sweep_all_accounts() -> None:
         async with engine.connect() as conn:
             result = await conn.execute(text("SELECT id FROM users"))
             user_ids = [row[0] for row in result.fetchall()]
-    except Exception:
+    except Exception as e:
+        _log_error_throttled("account sweep", e)
         return
     for uid in user_ids:
         await _ensure_user_zones_started(uid)
+
+
+_last_error_logged: dict[str, float] = {}
+
+
+def _log_error_throttled(loop_name: str, exc: Exception) -> None:
+    """Tail loops run every 1.5s — never let a persistent error flood the activity log."""
+    now = time.time()
+    if now - _last_error_logged.get(loop_name, 0) >= 30:
+        _last_error_logged[loop_name] = now
+        _log(f"{loop_name} ERROR: {exc!r}")
 
 
 async def _tail_hook_log() -> None:
@@ -275,8 +288,8 @@ async def _tail_hook_log() -> None:
                 _offset = 0
         except asyncio.CancelledError:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            _log_error_throttled("hook-log tail", e)
         await asyncio.sleep(TAIL_POLL_INTERVAL_SECONDS)
 
 
@@ -301,8 +314,8 @@ async def _tail_login_log() -> None:
                 _login_offset = 0
         except asyncio.CancelledError:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            _log_error_throttled("login-log tail", e)
         await asyncio.sleep(TAIL_POLL_INTERVAL_SECONDS)
 
 
@@ -330,8 +343,8 @@ async def _idle_check_loop() -> None:
                     await _autostop_zone(zone_id, info.get("name", zone_id))
         except asyncio.CancelledError:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            _log_error_throttled("idle-check", e)
 
 
 def _reset_runtime_state() -> None:
