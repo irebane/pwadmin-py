@@ -116,19 +116,25 @@ async def get_server_status() -> dict:
     }
 
 
-def get_running_zone_ids() -> set[str]:
-    """Scan /proc for live `./gs <zone>` processes. Shared by maps status and instance_watch."""
+def get_running_zone_pids() -> dict[str, int]:
+    """Scan /proc for live `./gs <zone>` processes, zone_id -> pid. Shared by maps status and
+    instance_watch (which also needs the pid to read live player counts from process memory)."""
     import glob, re
-    running_ids: set[str] = set()
+    running: dict[str, int] = {}
     for cmdfile in glob.glob("/proc/[0-9]*/cmdline"):
         try:
             cmd = open(cmdfile, "rb").read().replace(b"\x00", b" ").decode(errors="replace").strip()
             m = re.match(r'\./gs\s+(\S+)', cmd)
             if m:
-                running_ids.add(m.group(1))
+                pid = int(cmdfile.split("/")[2])
+                running[m.group(1)] = pid
         except Exception:
             continue
-    return running_ids
+    return running
+
+
+def get_running_zone_ids() -> set[str]:
+    return set(get_running_zone_pids().keys())
 
 
 async def get_maps_status() -> dict:

@@ -27,16 +27,31 @@ Two independent trigger sources feed the same autostart logic:
 
 Both paths funnel into _maybe_autostart(), which calls /home/gs_zone.sh start <zone> if the
 resolved zone isn't already running (with a per-zone cooldown to dedup retries). Last-seen-
-activity per zone is also tracked here for the idle auto-stop side, if enabled.
+activity per zone is also tracked here as a fallback for the idle auto-stop side, if enabled.
 
-The idle side (_idle_check_loop) does NOT rely solely on that request-based activity timer —
-_get_occupied_zones() checks real occupancy before ever stopping anything: MySQL's `online`
-table (authd's recordonline/recordoffline, authoritative for "is this account connected right
-now") for who's online, cross-referenced with GameClient.get_user_roles()'s current world_tag
-per account (gamedbd persists position continuously via periodic checkpoints while playing,
-not just at login). A zone with a real player in it is never stopped, no matter how long the
-idle counter says — the counter is only a fallback for zones with no player currently in them.
-Full details in docs/zone-lifecycle-and-gm-protocol.md.
+The idle side (_idle_check_loop) does not rely on that request-based timer alone — it reads
+each zone's REAL live player count directly out of its process's own memory before ever
+stopping it (see _read_zone_player_count). Background: a first attempt at this used MySQL's
+`online` table cross-referenced with GameClient.get_user_roles()'s world_tag per online
+account, but that data turns out to be frozen at whatever it was at last login/checkpoint, not
+updated by in-session zone switches — confirmed live by an account showing `map=1` while
+their character was demonstrably active inside a different zone at that exact moment. Trusting
+it gave false "safe to stop" signals for exactly the case it needed to protect (and, once,
+stopped a zone out from under an actually-connected player — see docs for the full incident).
+
+The real fix (2026-07-05), found by disassembling the (unstripped, full-symbols, non-PIE) `gs`
+binary: `world_manager::GetInstance()` is `mov eax, [0x94c2bfc]; ret` — a global singleton
+pointer at a fixed virtual address, identical across every `gs <zone>` process since the
+binary has no ASLR (confirmed via `readelf -h`: `Type: EXEC`, not `DYN`).
+`world_manager::AllocPlayer()`/`FreePlayer()` both compute `this + 0xC0` as the
+`obj_manager<gplayer>` member, and `obj_manager_basic<gplayer>::GetAllocedCount()` reads
+`*(member + 0x10)` — and `Alloc()`/`Free()` do `incl`/`decl` on exactly that field, confirming
+it's a genuine live "currently connected player" counter, not a capacity/pool-size value.
+Reading it is two 4-byte reads via /proc/<pid>/mem (no hooking, no writes, cannot affect the
+target process) — verified live against real data (gs01 showed player_count=3, matching
+exactly the 3 currently-online accounts with valid characters out of 4 online in total; the
+4th had no character data and correctly wasn't counted). Full details in
+docs/zone-lifecycle-and-gm-protocol.md.
 
 Runs as background asyncio tasks inside the pwadmin-py process itself (it already runs
 directly on the game server, see server_status.py / server_config.py for the same
@@ -45,11 +60,12 @@ local-filesystem-access pattern).
 import asyncio
 import json
 import re
+import struct
 import time
 from pathlib import Path
 
 from app.config import settings
-from app.services.server_status import get_running_zone_ids
+from app.services.server_status import get_running_zone_ids, get_running_zone_pids
 from app.services.game_client import GameClient
 
 HOOK_LOG_PATH = Path("/tmp/pw_switch_watch.log")
@@ -64,6 +80,12 @@ MAX_LOG_ENTRIES = 300
 DEFAULT_IDLE_MINUTES = 60
 PROTECTED_ZONES = {"gs01"}        # never touched: core world, not managed by gs_zone.sh
 GAMEDBD_PORT = 29400              # see _ensure_user_zones_started for why this isn't settings.server_port
+
+# Live player-count read, verified 2026-07-05 via disassembly of /home/gamed/gs (non-PIE, so
+# these addresses/offsets are fixed and identical across every gs <zone> process). See the
+# module docstring for the full derivation.
+WORLD_MANAGER_PTR_ADDR = 0x094C2BFC   # world_manager::GetInstance(): mov eax,[this]; ret
+PLAYER_COUNT_OFFSET = 0xD0            # world_manager* -> +0xC0 (obj_manager<gplayer>) -> +0x10 (count)
 
 _LINE_RE = re.compile(r"worldtag=(\d+)")
 _LOGIN_RE = re.compile(r"UserLogin:userid=(\d+)")
@@ -373,39 +395,25 @@ def _seed_activity_baselines() -> None:
             _last_activity.setdefault(zone_id, now)
 
 
-async def _get_occupied_zones() -> set[str]:
-    """Real occupancy check, independent of the idle-request-based activity timer (which only
-    reflects "someone requested this zone recently", not "someone is still in it"). Two data
-    sources, both already used elsewhere in this module:
-    - MySQL's `online` table — populated by authd's recordonline/recordoffline stored
-      procedures, authoritative for "is this account connected right now".
-    - GameClient.get_user_roles() for each online account's characters' current world_tag —
-      gamedbd persists position continuously via periodic checkpoints while playing, not just
-      at login, so this reflects roughly where they are right now, not a stale snapshot.
-    """
+def _read_zone_player_count(pid: int) -> int | None:
+    """Reads the live 'currently connected player' count directly out of a running
+    gs <zone> process's own memory. Purely a passive read (two 4-byte reads via
+    /proc/<pid>/mem) — cannot affect the target process. Returns None if the read fails for
+    any reason (process gone, unexpected layout, permission) rather than guessing; callers
+    must treat None as "unknown", not "empty". See module docstring for the derivation."""
     try:
-        from sqlalchemy import text
-        from app.database import engine
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT ID FROM online"))
-            online_ids = [row[0] for row in result.fetchall()]
-    except Exception as e:
-        _log_error_throttled("occupancy query (online table)", e)
-        return set()
-
-    occupied: set[str] = set()
-    for uid in online_ids:
-        try:
-            client = GameClient(host="localhost", port=GAMEDBD_PORT)
-            roles = await client.get_user_roles(uid)
-        except Exception as e:
-            _log_error_throttled("occupancy query (gamedbd)", e)
-            continue
-        for role in roles:
-            zone_id = _tag_zone.get(role.get("map"))
-            if zone_id:
-                occupied.add(zone_id)
-    return occupied
+        with open(f"/proc/{pid}/mem", "rb", buffering=0) as f:
+            f.seek(WORLD_MANAGER_PTR_ADDR)
+            world_manager_ptr = struct.unpack("<I", f.read(4))[0]
+            if world_manager_ptr == 0:
+                return None
+            f.seek(world_manager_ptr + PLAYER_COUNT_OFFSET)
+            count = struct.unpack("<i", f.read(4))[0]
+            if count < 0:
+                return None  # sanity check — a real count is never negative
+            return count
+    except Exception:
+        return None
 
 
 async def _idle_check_loop() -> None:
@@ -415,17 +423,21 @@ async def _idle_check_loop() -> None:
             idle_seconds = get_idle_minutes() * 60
             now = time.time()
             zones = settings.gs_zones_dict
-            candidates = [z for z in get_running_zone_ids() if _eligible_for_autostop(z)]
-            if not candidates:
-                continue
-            occupied = await _get_occupied_zones()
-            for zone_id in candidates:
-                if zone_id in occupied:
-                    # a real player is actually there right now — never stop it, no matter
-                    # what the idle counter says. Bump the timer too, so it doesn't fire the
-                    # instant they leave without a fresh request event.
-                    _last_activity[zone_id] = now
+            for zone_id, pid in get_running_zone_pids().items():
+                if not _eligible_for_autostop(zone_id):
                     continue
+
+                count = _read_zone_player_count(pid)
+                if count is not None:
+                    if count > 0:
+                        # a real player is actually in there right now — never stop it, no
+                        # matter what the request-based counter says
+                        _last_activity[zone_id] = now
+                        continue
+                else:
+                    _log_error_throttled(f"player-count read ({zone_id})",
+                                          RuntimeError("read failed, falling back to idle timer"))
+
                 last = _last_activity.get(zone_id)
                 if last is None:
                     # appeared after auto-stop was enabled (e.g. autostart brought it up) —
@@ -470,10 +482,6 @@ def _start_autostop() -> None:
     global _autostop_tasks
     if _autostop_tasks:
         return
-    if not _tag_zone:
-        # needed to resolve occupancy checks (world_tag -> zone_id); auto-start builds this
-        # too, but auto-stop must work standalone without auto-start ever being enabled
-        _tag_zone.update(_build_tag_zone_map())
     _seed_activity_baselines()
     _autostop_tasks = [asyncio.create_task(_idle_check_loop())]
     _log(f"Auto-stop enabled — idle timeout {get_idle_minutes()}m")
