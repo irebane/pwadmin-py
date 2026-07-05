@@ -377,12 +377,17 @@
 
           <div class="grid grid-cols-2 gap-4 mb-3">
             <!-- Online maps -->
-            <div>
+            <div @click.outside="selectedOnline = []">
               <div class="flex items-center justify-between mb-1.5">
-                <span class="text-xs text-slate-400">Online</span>
+                <div class="relative group">
+                  <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">Online</span>
+                  <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                    <p class="text-xs text-slate-400 leading-relaxed">Hold <span class="text-slate-300 font-mono">Ctrl</span> (<span class="text-slate-300 font-mono">Cmd</span> on Mac) and click to select multiple zones, then stop them all at once.</p>
+                  </div>
+                </div>
                 <span class="text-xs text-emerald-600" x-text="onlineMaps.length + ' running'"></span>
               </div>
-              <select size="11" x-model="selectedOnline"
+              <select size="11" multiple x-model="selectedOnline"
                 class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 font-mono py-1 focus:outline-none focus:border-blue-500 cursor-pointer">
                 <template x-for="z in onlineMaps" :key="z.id">
                   <option :value="z.id" x-text="z.id + '\t' + z.name"></option>
@@ -395,7 +400,7 @@
             </div>
 
             <!-- Available maps -->
-            <div>
+            <div @click.outside="selectedAvail = []">
               <div class="flex items-center justify-between mb-1.5">
                 <div class="relative group">
                   <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">Available</span>
@@ -652,7 +657,7 @@ function serverPage() {
     cpuPct: 0, memTotal: 0, memUsed: 0, memFree: 0,
     services: [], glinkd: [], glinkdOpen: false,
     controlling: false, controlAction: '', controlPhase: '', controlEstimate: '', controlProgress: 0,
-    onlineMaps: [], availMaps: [], selectedOnline: '', selectedAvail: [], mapMsg: '',
+    onlineMaps: [], availMaps: [], selectedOnline: [], selectedAvail: [], mapMsg: '',
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
     get controlMsg() {
       if (this.controlAction === 'stop')  return 'Stopping server services…';
@@ -847,10 +852,13 @@ function serverPage() {
       } catch(e) { this.mapMsg = 'Request failed'; }
     },
 
-    stopZone() {
-      if (!this.selectedOnline) { alert('Select a zone first.'); return; }
-      if (!confirm('Stop ' + this.selectedOnline + '?')) return;
-      this.mapAction('stop', this.selectedOnline);
+    async stopZone() {
+      if (!this.selectedOnline.length) { alert('Select at least one zone first.'); return; }
+      if (!confirm('Stop ' + this.selectedOnline.join(', ') + '?')) return;
+      for (const zone of this.selectedOnline) {
+        await this.mapAction('stop', zone);
+      }
+      this.selectedOnline = [];
     },
 
     async startZone() {
