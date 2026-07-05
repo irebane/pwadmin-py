@@ -34,7 +34,15 @@
 
         <!-- Rates -->
         <div class="mb-4">
-          <p class="text-xs text-slate-600 mb-2.5">Rates</p>
+          <div class="relative group inline-block mb-2.5">
+            <p class="text-xs text-slate-600 cursor-help border-b border-dashed border-slate-600">Rates</p>
+            <div class="absolute top-full left-0 mt-2 w-96 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+              <p class="text-xs text-slate-300 font-medium mb-1.5">These values alone don't do anything on the stock binary</p>
+              <p class="text-xs text-slate-400 leading-relaxed mb-2">In the stock <code class="font-mono text-slate-300">gs</code> binary, EXP/SP bonus is a no-op (the multiply function is an empty stub) and Drop Bonus has zero support at all — only Gold Bonus partially worked, off by one (<code class="font-mono text-slate-300">money_bonus=10</code> gave 11x).</p>
+              <p class="text-xs text-slate-400 leading-relaxed mb-2">Fixed by <code class="font-mono text-slate-300">patches/pw_expfix_1.5.5/pw_expfix_155.so</code>, loaded via <code class="font-mono text-slate-300">LD_PRELOAD</code> on <code class="font-mono text-slate-300">gs01</code>'s launch line in <code class="font-mono text-slate-300">/home/start.sh</code> (and its crash-recovery path, <code class="font-mono text-slate-300">restart2</code>). Without it, changing these numbers has no effect at all.</p>
+              <p class="text-xs text-slate-500">Verify it's loaded: <code class="font-mono text-slate-400">cat /proc/$(pgrep -f 'gs gs01')/maps | grep pw_expfix</code></p>
+            </div>
+          </div>
           <div class="grid grid-cols-2 gap-2">
             <div class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
               <span class="text-xs text-slate-400">EXP Bonus</span>
