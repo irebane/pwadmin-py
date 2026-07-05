@@ -15,7 +15,14 @@
 
         <!-- Class mask -->
         <div class="mb-5">
-          <p class="text-xs text-slate-600 mb-2.5">Allowed Classes</p>
+          <div class="relative group inline-block mb-2.5">
+            <p class="text-xs text-slate-600 cursor-help border-b border-dashed border-slate-600">Allowed Classes</p>
+            <div class="absolute top-full left-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+              <p class="text-xs text-slate-300 font-medium mb-1.5">Which classes players can pick at character creation</p>
+              <p class="text-xs text-slate-400 leading-relaxed mb-2">Writes <code class="font-mono text-slate-300">allow_login_class_mask</code> in <code class="font-mono text-slate-300">ptemplate.conf</code>'s <code class="font-mono text-slate-300">[GENERAL]</code> section — a bitmask, one bit per class. The bit values aren't sequential (1, 2, 4, 8…) in this game's class ordering, which is why checkboxes exist instead of asking you to compute the number by hand.</p>
+              <p class="text-xs text-slate-400 leading-relaxed">"Mask value" is the same number in raw form — editing it directly updates the checkboxes to match, useful if you already know the number you want (e.g. from another server's config).</p>
+            </div>
+          </div>
           <div class="grid grid-cols-2 gap-x-6 gap-y-2">
             <template x-for="cls in classes" :key="cls.id">
               <label class="flex items-center gap-2.5 cursor-pointer group">
@@ -37,30 +44,52 @@
           <div class="relative group inline-block mb-2.5">
             <p class="text-xs text-slate-600 cursor-help border-b border-dashed border-slate-600">Rates</p>
             <div class="absolute top-full left-0 mt-2 w-96 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-              <p class="text-xs text-slate-300 font-medium mb-1.5">These values alone don't do anything on the stock binary</p>
-              <p class="text-xs text-slate-400 leading-relaxed mb-2">In the stock <code class="font-mono text-slate-300">gs</code> binary, EXP/SP bonus is a no-op (the multiply function is an empty stub) and Drop Bonus has zero support at all — only Gold Bonus partially worked, off by one (<code class="font-mono text-slate-300">money_bonus=10</code> gave 11x).</p>
-              <p class="text-xs text-slate-400 leading-relaxed mb-2">Fixed by <code class="font-mono text-slate-300">patches/pw_expfix_1.5.5/pw_expfix_155.so</code>, loaded via <code class="font-mono text-slate-300">LD_PRELOAD</code> on <code class="font-mono text-slate-300">gs01</code>'s launch line in <code class="font-mono text-slate-300">/home/start.sh</code> (and its crash-recovery path, <code class="font-mono text-slate-300">restart2</code>). Without it, changing these numbers has no effect at all.</p>
+              <p class="text-xs text-slate-300 font-medium mb-1.5">All four require a patch to do anything</p>
+              <p class="text-xs text-slate-400 leading-relaxed mb-2">On the <span class="text-slate-300">stock</span> <code class="font-mono text-slate-300">gs</code> binary: EXP/SP Bonus are silently ignored (the multiply function is an empty stub) and Drop Bonus doesn't exist at all — only Gold Bonus partially worked, off by one (<code class="font-mono text-slate-300">money_bonus=10</code> gave 11x, not 10x).</p>
+              <p class="text-xs text-slate-400 leading-relaxed mb-2">Fixed by <code class="font-mono text-slate-300">patches/pw_expfix_1.5.5/pw_expfix_155.so</code>, loaded via <code class="font-mono text-slate-300">LD_PRELOAD</code> on <code class="font-mono text-slate-300">gs01</code>'s launch line in <code class="font-mono text-slate-300">/home/start.sh</code> (and its crash-recovery path, <code class="font-mono text-slate-300">restart2</code>) — <span class="text-slate-300">currently loaded on this server</span>, so all four are live. Without it, changing these numbers would do nothing.</p>
               <p class="text-xs text-slate-500">Verify it's loaded: <code class="font-mono text-slate-400">cat /proc/$(pgrep -f 'gs gs01')/maps | grep pw_expfix</code></p>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
-              <span class="text-xs text-slate-400">EXP Bonus</span>
+              <div class="relative group">
+                <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">EXP Bonus</span>
+                <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-400 leading-relaxed">Direct multiplier on EXP earned per kill. <code class="font-mono text-slate-300">10</code> = 10x EXP. <code class="font-mono text-slate-300">0</code> or <code class="font-mono text-slate-300">1</code> = normal rate.</p>
+                </div>
+              </div>
               <input type="number" x-model.number="xp"
                 class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
             </div>
             <div class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
-              <span class="text-xs text-slate-400">SP Bonus</span>
+              <div class="relative group">
+                <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">SP Bonus</span>
+                <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-400 leading-relaxed">Direct multiplier on Spirit/Skill Points earned per kill. <code class="font-mono text-slate-300">100</code> = 100x SP. <code class="font-mono text-slate-300">0</code> or <code class="font-mono text-slate-300">1</code> = normal rate.</p>
+                </div>
+              </div>
               <input type="number" x-model.number="sp"
                 class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
             </div>
             <div class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
-              <span class="text-xs text-slate-400">Drop Bonus</span>
+              <div class="relative group">
+                <span class="text-xs text-amber-400/90 cursor-help border-b border-dashed border-amber-700">Drop Bonus</span>
+                <div class="absolute bottom-full left-0 mb-2 w-72 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-amber-400 font-medium mb-1.5">Not a multiplier — different from the other three</p>
+                  <p class="text-xs text-slate-400 leading-relaxed mb-2">This is the <span class="text-slate-300">number of drop rolls per kill</span>, not a percentage. <code class="font-mono text-slate-300">0</code> = normal (single roll, patch not engaged). <code class="font-mono text-slate-300">3</code> = the drop table is rolled 3 separate times per kill.</p>
+                  <p class="text-xs text-slate-400 leading-relaxed">Large values mean that many rolls <span class="text-slate-300">every single kill</span> — this can inflate item/gold volume fast. Start low.</p>
+                </div>
+              </div>
               <input type="number" x-model.number="drop"
                 class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
             </div>
             <div class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
-              <span class="text-xs text-slate-400">Gold Bonus</span>
+              <div class="relative group">
+                <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">Gold Bonus</span>
+                <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-400 leading-relaxed">Direct multiplier on coin drops per kill (<code class="font-mono text-slate-300">money_bonus</code>). <code class="font-mono text-slate-300">10</code> = 10x coin drops. Exact multiplier — the stock binary's off-by-one (11x for 10) is patched out.</p>
+                </div>
+              </div>
               <input type="number" x-model.number="gold"
                 class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
             </div>
@@ -72,22 +101,44 @@
           <p class="text-xs text-slate-600 mb-2.5">Flags</p>
           <div class="grid grid-cols-2 gap-2">
             <label class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between cursor-pointer">
-              <span class="text-xs text-slate-400 select-none">Debug Mode</span>
+              <div class="relative group">
+                <span class="text-xs text-amber-400/90 select-none cursor-help border-b border-dashed border-amber-700">Debug Mode</span>
+                <div class="absolute bottom-full left-0 mb-2 w-72 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-amber-400 font-medium mb-1.5">Not a logging flag — enables cheat-level client commands</p>
+                  <p class="text-xs text-slate-400 leading-relaxed mb-2">Writes <code class="font-mono text-slate-300">debug_command_mode = active</code> in <code class="font-mono text-slate-300">ptemplate.conf</code>. Confirmed via the binary's symbols: this gates <code class="font-mono text-slate-300">GNET::DebugCommand</code> / <code class="font-mono text-slate-300">DebugAddCash</code> — client-sendable debug commands including adding cash on demand.</p>
+                  <p class="text-xs text-slate-400 leading-relaxed">Fine for a private/family test server (this one has it on). Never enable on a server any untrusted player can reach.</p>
+                </div>
+              </div>
               <input type="checkbox" x-model="debug"
                 class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 cursor-pointer">
             </label>
             <label class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between cursor-pointer">
-              <span class="text-xs text-slate-400 select-none">PvP</span>
+              <div class="relative group">
+                <span class="text-xs text-slate-400 select-none cursor-help border-b border-dashed border-slate-600">PvP</span>
+                <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-400 leading-relaxed">Writes <code class="font-mono text-slate-300">pvp</code> in <code class="font-mono text-slate-300">gdeliveryd/gamesys.conf</code>'s <code class="font-mono text-slate-300">[GDeliveryServer]</code> section. Enables open-world player-vs-player damage outside arenas/battlefields.</p>
+                </div>
+              </div>
               <input type="checkbox" x-model="pvp"
                 class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 cursor-pointer">
             </label>
             <label class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between cursor-pointer">
-              <span class="text-xs text-slate-400 select-none">TW (Battlefield)</span>
+              <div class="relative group">
+                <span class="text-xs text-slate-400 select-none cursor-help border-b border-dashed border-slate-600">TW (Battlefield)</span>
+                <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-400 leading-relaxed">Writes <code class="font-mono text-slate-300">battlefield</code> in the same <code class="font-mono text-slate-300">[GDeliveryServer]</code> section as PvP. Enables the server-wide Territory War / battlefield system, not a per-instance toggle.</p>
+                </div>
+              </div>
               <input type="checkbox" x-model="tw"
                 class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 cursor-pointer">
             </label>
             <label class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between cursor-pointer">
-              <span class="text-xs text-slate-400 select-none">Case Insensitive</span>
+              <div class="relative group">
+                <span class="text-xs text-slate-400 select-none cursor-help border-b border-dashed border-slate-600">Case Insensitive</span>
+                <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-400 leading-relaxed">Writes <code class="font-mono text-slate-300">case_insensitive</code> in <code class="font-mono text-slate-300">uniquenamed/gamesys.conf</code>. When on, name-uniqueness checks ignore case — e.g. "Hero" and "hero" count as the same name and the second is rejected as a duplicate.</p>
+                </div>
+              </div>
               <input type="checkbox" x-model="caseInsens"
                 class="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-0 cursor-pointer">
             </label>
@@ -98,7 +149,13 @@
         <div class="mb-5">
           <p class="text-xs text-slate-600 mb-2.5">Settings</p>
           <div class="bg-slate-800/60 rounded-lg px-3 py-2 flex items-center justify-between">
-            <span class="text-xs text-slate-400">Max Name Length</span>
+            <div class="relative group">
+              <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">Max Name Length</span>
+              <div class="absolute bottom-full left-0 mb-2 w-72 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Writes <code class="font-mono text-slate-300">max_name_len</code> in <code class="font-mono text-slate-300">gdeliveryd/gamesys.conf</code> — confirmed present in <code class="font-mono text-slate-300">gdeliveryd</code>'s own symbol table as a real key it reads.</p>
+                <p class="text-xs text-amber-500">⚠ Not independently confirmed end-to-end (i.e. we haven't tested that a name one character over this limit actually gets rejected at creation) — only that the key exists and is read.</p>
+              </div>
+            </div>
             <input type="number" x-model.number="maxName" min="6" max="32"
               class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
           </div>
