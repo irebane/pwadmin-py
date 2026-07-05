@@ -438,3 +438,47 @@ anything else. A harder fallback (e.g. force-resetting the character's saved `wo
 to `gs01` via a write to gamedbd's protocol) was discussed but not built — it requires writing
 to live character save data, which is a meaningfully bigger risk than anything implemented so
 far, and wasn't needed for either real incident this session.
+
+### BUGFIXES (2026-07-05, same day): two real bugs found deploying the above
+
+The login-guard mechanism above was fully implemented, deployed, and tested clean in isolation
+(unit tests with mocked `GameClient`/DB), yet did *nothing* against live production traffic —
+zero reaction across many real login attempts and several manually-injected synthetic ones.
+Root-caused via a debug session using `py-spy dump` (inconclusive — py-spy isn't asyncio-task-
+aware, only shows the OS thread parked in the event loop) and, more usefully, temporary
+`_dbg()` tracing writing directly to `/tmp/login_tail_debug.log` at every decision point inside
+the running process. Two independent, unrelated bugs were found and fixed:
+
+1. **Weak-reference task GC** (`app/services/instance_watch.py`): `asyncio.create_task(coro)`
+   returns a `Task` whose *only* strong reference, per the asyncio docs, is the caller's — if
+   nothing holds onto the return value, the task can be garbage-collected before it ever runs,
+   silently, with no exception. All three fire-and-forget spawns
+   (`_maybe_autostart`'s `_autostart_zone` call, `_tail_login_log`'s `_ensure_user_zones_started`
+   call, and the one-shot `_sweep_all_accounts` at watcher start) had exactly this shape. It
+   "worked" for the hook-triggered path by luck — created from deep inside an already-looping
+   background task, which tends to give the new task a chance to start before anything triggers
+   a GC pass — but reliably failed for the one-shot startup sweep. Fixed with `_spawn()`: adds
+   the task to a module-level `set` and removes it via `add_done_callback` on completion, per
+   the standard asyncio-recommended pattern.
+2. **Wrong gamedbd port** (the actual root cause of *this specific* feature doing nothing, even
+   after fixing #1): `_ensure_user_zones_started` queried `GameClient(host="localhost",
+   port=settings.server_port)` — but on the live 10.0.0.230 `.env`, `SERVER_PORT=29000`, which
+   is glinkd's *client-facing* port, not gamedbd's query port (29400). Connecting to the wrong
+   port fails instantly (`ConnectionRefusedError` or similar, caught inside
+   `GameClient._send_packet`'s own try/except) and returns `None` → `get_user_roles()` returns
+   `[]` → nothing downstream ever runs, with zero exception raised anywhere to hint at the
+   problem. This is why the very first round of error-visibility improvements (throttled
+   `_log_error_throttled()` calls added to every `except Exception: pass`) still showed nothing
+   — there was genuinely no exception, just a fast, valid-looking empty result. Only the
+   `_dbg()` trace of the actual `roles=[]` return value exposed it. Fixed by hardcoding
+   `GAMEDBD_PORT = 29400` in `instance_watch.py` instead of trusting `settings.server_port`,
+   which apparently means something else in practice on this deployment (worth checking
+   whether `app/services/game_protocol.py`'s `get_client()` — which *does* use
+   `settings.server_port` — has the same latent bug for the account pages; not investigated,
+   out of scope for this session).
+
+Both fixes verified against live production traffic after redeploy: stopped `is31` manually,
+appended a synthetic `UserLogin:userid=1040` line to `authd.log` directly, watched it get
+picked up within one poll cycle (~1.5s) and `is31` come back up — and separately, confirmed the
+proactive startup sweep alone (no login attempt at all) brought `is31` back up within ~3
+seconds of a fresh `pwadmin` restart while the watcher was left enabled.
