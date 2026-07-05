@@ -331,6 +331,50 @@
         </div>
         <div class="p-4">
 
+          <!-- Automation -->
+          <div class="flex flex-col gap-2 mb-3 pb-3 border-b border-slate-800">
+            <div class="bg-slate-800/60 rounded-lg px-3 py-2.5 flex items-center justify-between">
+              <div class="relative group">
+                <span class="text-xs text-slate-300 cursor-help border-b border-dashed border-slate-600">Auto-Start</span>
+                <div class="absolute top-full left-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-300 font-medium mb-1.5">Start instances on demand</p>
+                  <p class="text-xs text-slate-400 leading-relaxed mb-2">Watches for player zone-entry requests <span class="text-slate-300">and</span> login attempts, and starts the target instance if it's offline.</p>
+                  <p class="text-xs text-slate-400 leading-relaxed">Covers a character whose saved position is in a zone that's currently down — crashed, manually stopped, or never restarted after a server reboot.</p>
+                </div>
+              </div>
+              <button type="button" @click="autostartEnabled = !autostartEnabled; saveAutostart()"
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
+                :class="autostartEnabled ? 'bg-emerald-600' : 'bg-slate-700'">
+                <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                  :class="autostartEnabled ? 'translate-x-5' : 'translate-x-1'"></span>
+              </button>
+            </div>
+
+            <div class="bg-slate-800/60 rounded-lg px-3 py-2.5 flex items-center justify-between gap-3">
+              <div class="relative group">
+                <span class="text-xs text-slate-300 cursor-help border-b border-dashed border-slate-600">Auto-Stop</span>
+                <div class="absolute top-full left-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  <p class="text-xs text-slate-300 font-medium mb-1.5">Stop idle instances automatically</p>
+                  <p class="text-xs text-slate-400 leading-relaxed mb-2">Stops an instance after the idle timeout below — based on time since the last entry/login request, not live player count, so a populated instance with no new arrivals can still be stopped.</p>
+                  <p class="text-xs text-slate-400 leading-relaxed"><span class="text-slate-300">World</span>-type zones and the main world are never auto-stopped.</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 ml-auto shrink-0">
+                <input type="number" x-model.number="idleMinutes" @change="saveAutostart()" min="1" max="1440"
+                  class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
+                <span class="text-xs text-slate-500">min</span>
+                <button type="button" @click="autostopEnabled = !autostopEnabled; saveAutostart()"
+                  class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
+                  :class="autostopEnabled ? 'bg-emerald-600' : 'bg-slate-700'">
+                  <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                    :class="autostopEnabled ? 'translate-x-5' : 'translate-x-1'"></span>
+                </button>
+              </div>
+            </div>
+
+            <p x-show="autostartMsg" x-text="autostartMsg" class="text-xs text-emerald-400 font-mono"></p>
+          </div>
+
           <div class="grid grid-cols-2 gap-4 mb-3">
             <!-- Online maps -->
             <div>
@@ -353,10 +397,15 @@
             <!-- Available maps -->
             <div>
               <div class="flex items-center justify-between mb-1.5">
-                <span class="text-xs text-slate-400">Available</span>
+                <div class="relative group">
+                  <span class="text-xs text-slate-400 cursor-help border-b border-dashed border-slate-600">Available</span>
+                  <div class="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                    <p class="text-xs text-slate-400 leading-relaxed">Hold <span class="text-slate-300 font-mono">Ctrl</span> (<span class="text-slate-300 font-mono">Cmd</span> on Mac) and click to select multiple zones, then start them all at once.</p>
+                  </div>
+                </div>
                 <span class="text-xs text-slate-600" x-text="availMaps.length + ' offline'"></span>
               </div>
-              <select size="11" x-model="selectedAvail"
+              <select size="11" multiple x-model="selectedAvail"
                 class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 font-mono py-1 focus:outline-none focus:border-blue-500 cursor-pointer">
                 <template x-for="z in availMaps" :key="z.id">
                   <option :value="z.id" x-text="z.id + '\t' + z.name"></option>
@@ -383,50 +432,6 @@
 
           <p x-show="mapMsg" x-text="mapMsg"
             class="mt-2 text-xs font-mono text-amber-400"></p>
-
-          <!-- Automation -->
-          <div class="flex flex-col gap-2 mt-3 pt-3 border-t border-slate-800">
-            <div class="bg-slate-800/60 rounded-lg px-3 py-2.5 flex items-center justify-between">
-              <div class="relative group">
-                <span class="text-xs text-slate-300 cursor-help border-b border-dashed border-slate-600">Auto-Start</span>
-                <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                  <p class="text-xs text-slate-300 font-medium mb-1.5">Start instances on demand</p>
-                  <p class="text-xs text-slate-400 leading-relaxed mb-2">Watches for player zone-entry requests <span class="text-slate-300">and</span> login attempts, and starts the target instance if it's offline.</p>
-                  <p class="text-xs text-slate-400 leading-relaxed">Covers a character whose saved position is in a zone that's currently down — crashed, manually stopped, or never restarted after a server reboot.</p>
-                </div>
-              </div>
-              <button type="button" @click="autostartEnabled = !autostartEnabled; saveAutostart()"
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
-                :class="autostartEnabled ? 'bg-emerald-600' : 'bg-slate-700'">
-                <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
-                  :class="autostartEnabled ? 'translate-x-5' : 'translate-x-1'"></span>
-              </button>
-            </div>
-
-            <div class="bg-slate-800/60 rounded-lg px-3 py-2.5 flex items-center justify-between gap-3">
-              <div class="relative group">
-                <span class="text-xs text-slate-300 cursor-help border-b border-dashed border-slate-600">Auto-Stop</span>
-                <div class="absolute bottom-full left-0 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity pointer-events-none z-20">
-                  <p class="text-xs text-slate-300 font-medium mb-1.5">Stop idle instances automatically</p>
-                  <p class="text-xs text-slate-400 leading-relaxed mb-2">Stops an instance after the idle timeout below — based on time since the last entry/login request, not live player count, so a populated instance with no new arrivals can still be stopped.</p>
-                  <p class="text-xs text-slate-400 leading-relaxed"><span class="text-slate-300">World</span>-type zones and the main world are never auto-stopped.</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 ml-auto shrink-0">
-                <input type="number" x-model.number="idleMinutes" @change="saveAutostart()" min="1" max="1440"
-                  class="w-14 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center text-slate-200 focus:outline-none focus:border-blue-500">
-                <span class="text-xs text-slate-500">min</span>
-                <button type="button" @click="autostopEnabled = !autostopEnabled; saveAutostart()"
-                  class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0"
-                  :class="autostopEnabled ? 'bg-emerald-600' : 'bg-slate-700'">
-                  <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
-                    :class="autostopEnabled ? 'translate-x-5' : 'translate-x-1'"></span>
-                </button>
-              </div>
-            </div>
-
-            <p x-show="autostartMsg" x-text="autostartMsg" class="text-xs text-emerald-400 font-mono"></p>
-          </div>
         </div>
       </div>
 
@@ -647,7 +652,7 @@ function serverPage() {
     cpuPct: 0, memTotal: 0, memUsed: 0, memFree: 0,
     services: [], glinkd: [], glinkdOpen: false,
     controlling: false, controlAction: '', controlPhase: '', controlEstimate: '', controlProgress: 0,
-    onlineMaps: [], availMaps: [], selectedOnline: '', selectedAvail: '', mapMsg: '',
+    onlineMaps: [], availMaps: [], selectedOnline: '', selectedAvail: [], mapMsg: '',
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
     get controlMsg() {
       if (this.controlAction === 'stop')  return 'Stopping server services…';
@@ -848,9 +853,12 @@ function serverPage() {
       this.mapAction('stop', this.selectedOnline);
     },
 
-    startZone() {
-      if (!this.selectedAvail) { alert('Select a zone first.'); return; }
-      this.mapAction('start', this.selectedAvail);
+    async startZone() {
+      if (!this.selectedAvail.length) { alert('Select at least one zone first.'); return; }
+      for (const zone of this.selectedAvail) {
+        await this.mapAction('start', zone);
+      }
+      this.selectedAvail = [];
     },
 
     stopMapsKeepWorld() {
