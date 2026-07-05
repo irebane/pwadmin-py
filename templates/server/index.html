@@ -213,7 +213,7 @@
           </div>
         </div>
 
-        <!-- RAM + CPU cards -->
+        <!-- CPU / RAM / Swap / Disk cards -->
         <div class="grid grid-cols-4 gap-3 mb-4">
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
             <div class="text-base font-semibold"
@@ -222,16 +222,22 @@
             <div class="text-xs text-slate-600 mt-0.5">CPU</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
-            <div class="text-base font-semibold text-slate-200" x-text="memTotal || '—'"></div>
-            <div class="text-xs text-slate-600 mt-0.5">Total MB</div>
+            <div class="text-base font-semibold"
+              :class="pctOf(memUsed, memTotal) > 85 ? 'text-red-400' : pctOf(memUsed, memTotal) > 60 ? 'text-amber-400' : 'text-slate-200'"
+              x-text="fmtUsedTotal(memUsed, memTotal)"></div>
+            <div class="text-xs text-slate-600 mt-0.5">Memory</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
-            <div class="text-base font-semibold text-amber-400" x-text="memUsed || '—'"></div>
-            <div class="text-xs text-slate-600 mt-0.5">Used MB</div>
+            <div class="text-base font-semibold"
+              :class="swapTotal === 0 ? 'text-slate-600' : pctOf(swapUsed, swapTotal) > 30 ? 'text-red-400' : 'text-slate-200'"
+              x-text="swapTotal ? fmtUsedTotal(swapUsed, swapTotal) : 'none'"></div>
+            <div class="text-xs text-slate-600 mt-0.5">Swap</div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
-            <div class="text-base font-semibold text-emerald-400" x-text="memFree || '—'"></div>
-            <div class="text-xs text-slate-600 mt-0.5">Free MB</div>
+            <div class="text-base font-semibold"
+              :class="pctOf(diskUsed, diskTotal) > 90 ? 'text-red-400' : pctOf(diskUsed, diskTotal) > 75 ? 'text-amber-400' : 'text-slate-200'"
+              x-text="fmtUsedTotal(diskUsed, diskTotal)"></div>
+            <div class="text-xs text-slate-600 mt-0.5">Disk</div>
           </div>
         </div>
 
@@ -655,7 +661,14 @@ function serverPage() {
   return {
     /* status */
     cpuPct: 0, memTotal: 0, memUsed: 0, memFree: 0,
+    swapTotal: 0, swapUsed: 0, diskTotal: 0, diskUsed: 0,
     services: [], glinkd: [], glinkdOpen: false,
+    pctOf(used, total) { return total ? Math.round(used / total * 100) : 0; },
+    fmtUsedTotal(usedMb, totalMb) {
+      if (!totalMb) return '—';
+      const fmt = (mb) => mb >= 1024 ? (mb / 1024).toFixed(1) + 'G' : Math.round(mb) + 'M';
+      return fmt(usedMb) + '/' + fmt(totalMb);
+    },
     controlling: false, controlAction: '', controlPhase: '', controlEstimate: '', controlProgress: 0,
     onlineMaps: [], availMaps: [], selectedOnline: [], selectedAvail: [], mapMsg: '',
     get anyRunning() { return this.services.some(s => s.process === 'gs' && s.running); },
@@ -739,10 +752,14 @@ function serverPage() {
         const r = await fetch('/api/server/status');
         if (!r.ok) return;
         const d = await r.json();
-        this.cpuPct   = d.cpu_pct  ?? 0;
-        this.memTotal = d.mem_total;
-        this.memUsed  = d.mem_used;
-        this.memFree  = d.mem_free;
+        this.cpuPct    = d.cpu_pct    ?? 0;
+        this.memTotal  = d.mem_total;
+        this.memUsed   = d.mem_used;
+        this.memFree   = d.mem_free;
+        this.swapTotal = d.swap_total ?? 0;
+        this.swapUsed  = d.swap_used  ?? 0;
+        this.diskTotal = d.disk_total ?? 0;
+        this.diskUsed  = d.disk_used  ?? 0;
         this.services = d.services || [];
         this.glinkd   = d.glinkd   || [];
       } catch(e) {}

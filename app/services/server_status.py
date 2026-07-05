@@ -108,6 +108,7 @@ async def get_server_status() -> dict:
         })
 
     mem_total = mem_used = mem_free = 0
+    swap_total = swap_used = 0
     try:
         meminfo = Path("/proc/meminfo").read_text()
 
@@ -120,6 +121,17 @@ async def get_server_status() -> dict:
         mem_total = pkb("MemTotal:")
         mem_free = pkb("MemAvailable:")
         mem_used = mem_total - mem_free
+        swap_total = pkb("SwapTotal:")
+        swap_used = swap_total - pkb("SwapFree:")
+    except Exception:
+        pass
+
+    disk_total = disk_used = 0
+    try:
+        import shutil as _shutil
+        usage = _shutil.disk_usage(settings.server_path)
+        disk_total = round(usage.total / 1024 / 1024)
+        disk_used = round(usage.used / 1024 / 1024)
     except Exception:
         pass
 
@@ -141,6 +153,10 @@ async def get_server_status() -> dict:
         "mem_total": mem_total,
         "mem_used": mem_used,
         "mem_free": mem_free,
+        "swap_total": swap_total,
+        "swap_used": swap_used,
+        "disk_total": disk_total,
+        "disk_used": disk_used,
         "services": services,
         "glinkd": glinkd,
     }
