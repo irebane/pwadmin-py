@@ -199,23 +199,39 @@ async def _autostop_zone(zone_id: str, name: str) -> None:
         _log(f"Auto-stop ERROR for {zone_id} ({name}): {e}")
 
 
+def _dbg(msg: str) -> None:
+    try:
+        with open("/tmp/login_tail_debug.log", "a") as f:
+            f.write(f"{time.time()} {msg}\n")
+    except Exception:
+        pass
+
+
 def _maybe_autostart(zone_id: str | None) -> None:
     """Shared by both trigger sources: bump activity, start the zone if it's offline."""
+    _dbg(f"_maybe_autostart called zone_id={zone_id!r}")
     if not zone_id or zone_id in PROTECTED_ZONES:
+        _dbg("  -> rejected: falsy or protected")
         return
 
     now = time.time()
     _last_activity[zone_id] = now
 
-    if zone_id in get_running_zone_ids():
+    running = get_running_zone_ids()
+    _dbg(f"  running={running}")
+    if zone_id in running:
+        _dbg("  -> rejected: already running")
         return
 
     last_attempt = _last_start_attempt.get(zone_id, 0)
+    _dbg(f"  last_attempt={last_attempt} now={now} delta={now-last_attempt}")
     if now - last_attempt < START_COOLDOWN_SECONDS:
+        _dbg("  -> rejected: cooldown")
         return
     _last_start_attempt[zone_id] = now
 
     name = settings.gs_zones_dict.get(zone_id, {}).get("name", zone_id)
+    _dbg(f"  -> spawning autostart for {zone_id} ({name})")
     _spawn(_autostart_zone(zone_id, name))
 
 
@@ -231,10 +247,13 @@ async def _ensure_user_zones_started(user_id: int) -> None:
     """Query gamedbd directly for this account's characters' saved world_tag and make sure
     each one's zone is running — covers login/character-resume, which does not go through
     the PlaneSwitch hook at all (confirmed by direct testing)."""
+    _dbg(f"_ensure_user_zones_started called user_id={user_id}")
     try:
         client = GameClient(host="localhost", port=settings.server_port)
         roles = await client.get_user_roles(user_id)
+        _dbg(f"  roles={roles}")
     except Exception as e:
+        _dbg(f"  EXCEPTION: {e!r}")
         _log_error_throttled("gamedbd query", e)
         return
     for role in roles:
@@ -312,6 +331,7 @@ async def _tail_login_log() -> None:
                     for line in chunk.splitlines():
                         m = _LOGIN_RE.search(line)
                         if m:
+                            _dbg(f"login line matched: {line!r} -> spawning for user {m.group(1)}")
                             _spawn(_ensure_user_zones_started(int(m.group(1))))
             else:
                 _login_offset = 0
