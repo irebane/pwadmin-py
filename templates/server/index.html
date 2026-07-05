@@ -179,7 +179,7 @@
                 <p class="text-xs text-slate-300 font-medium mb-1.5">Game Database Daemon workers</p>
                 <p class="text-xs text-slate-400 leading-relaxed mb-2">Each worker is a <span class="text-slate-300">thread</span> inside the single <span class="text-slate-300">gamedbd</span> process, holding one MySQL connection and handling character saves, item operations, and trades — not a separate OS process.</p>
                 <p class="text-xs text-slate-400 leading-relaxed mb-2">Rule of thumb: <span class="text-slate-300">1 worker per 50 concurrent players</span>, minimum 2. For a small family server 2 is plenty.</p>
-                <p class="text-xs text-slate-400 leading-relaxed mb-2">Verified directly (<span class="text-slate-300">/proc/&lt;pid&gt;/task</span>): <span class="text-slate-300">Server Status's Count column always shows 1</span> for Game DB Daemon no matter this setting — it counts processes, and gamedbd never forks. It's still working; that column just can't show it.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Server Status's Count column for Game DB Daemon shows real <span class="text-slate-300">thread</span> count now (via <span class="text-slate-300">/proc/&lt;pid&gt;/task</span>), and it will be <span class="text-slate-300">this setting + 6</span> — 6 fixed baseline threads (main + 3 other internal pool categories gamedbd always runs, regardless of this setting) plus however many you set here. Setting <code class="font-mono text-slate-300">2</code> → <code class="font-mono text-slate-300">8</code> threads shown, verified live.</p>
                 <p class="text-xs text-amber-500">⚠ Server restart required for changes to take effect.</p>
               </div>
             </div>
@@ -193,7 +193,7 @@
                 <p class="text-xs text-slate-300 font-medium mb-1.5">Unique Name Daemon workers</p>
                 <p class="text-xs text-slate-400 leading-relaxed mb-2">Consulted only during <span class="text-slate-300">character creation and rename</span> to enforce name uniqueness. Not involved in normal gameplay at all.</p>
                 <p class="text-xs text-slate-400 leading-relaxed mb-2"><span class="text-slate-300">1 worker is sufficient for any server size</span> — name checks are infrequent and fast.</p>
-                <p class="text-xs text-slate-400 leading-relaxed mb-2">Same as DB Workers — this is a <span class="text-slate-300">thread</span> count inside the single <span class="text-slate-300">uniquenamed</span> process, not separate processes. Server Status's Count column always shows 1 regardless of this setting.</p>
+                <p class="text-xs text-slate-400 leading-relaxed mb-2">Same idea as DB Workers — a <span class="text-slate-300">thread</span> count inside the single <span class="text-slate-300">uniquenamed</span> process. Server Status's Count column will be <span class="text-slate-300">this setting + 5</span> (a different baseline than gamedbd's +6, since it's a different daemon). Setting <code class="font-mono text-slate-300">2</code> → <code class="font-mono text-slate-300">7</code> threads shown, verified live.</p>
                 <p class="text-xs text-amber-500">⚠ Server restart required for changes to take effect.</p>
               </div>
             </div>
