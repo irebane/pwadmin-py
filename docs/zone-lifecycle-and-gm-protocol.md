@@ -390,3 +390,51 @@ pwadmin-py repo working tree. **Not yet deployed to the live server**:
    state cleanly).
 3. The feature is **disabled by default** (opt-in checkbox) — nothing changes on the live
    server's behavior until the checkbox is explicitly turned on in the UI after deployment.
+
+### CORRECTION (2026-07-05, same day): login/character-resume does NOT go through PlaneSwitch
+
+Real-world test on live traffic: enabled the watcher, then watched `/tmp/pw_switch_watch.log`
+with `tail -f` while a real account (`agilato`, userid 1040) attempted to log in 5 times over
+45 seconds while their character's saved zone (`is31`) was offline. **Zero new lines appeared
+in the hook log during any of those attempts.** `authd.log` confirmed the login attempts
+happened (`UserLogin:userid=1040` x5) and all failed ("Couldn't login to server" client-side).
+
+So: `PlaneSwitch` only fires for *voluntary* in-game zone switches (portal, teleport item)
+while already connected — not for placing a character into their last saved position during
+login/character-resume. That's a different, still-unidentified code path in the `gs01` binary.
+This means the original Instance Autostart feature above does **not** cover "character's
+saved zone is offline at login" at all — that failure mode was silently unfixed by the whole
+feature as first built.
+
+**Fix, without touching the binary at all**: rather than reverse-engineer the actual
+login/resume placement function (a second full RE effort), solved it one layer up, using
+tools pwadmin-py already had:
+- `authd.log` is plaintext and already logs `UserLogin:userid=N` on every login attempt — no
+  hooking needed, just tail the file (same byte-offset polling technique as the hook log).
+- `app.services.game_client.GameClient.get_user_roles(user_id)` (already used by the account
+  pages) queries gamedbd directly over its own binary protocol (port 29400, opcode `0xD49`
+  chained into `0x1F43` per character) and returns each character's saved `world_tag` — this
+  is exactly how Agilata's stuck zone was found in the first place (roleid 1024, `world_tag`
+  131 → `is31`), by running the query manually. Read-only, no risk to character data.
+- So: on every `UserLogin:userid=N` line, query that account's characters' `world_tag`s and
+  make sure each resolved zone is running, using the exact same `_maybe_autostart()` /
+  `gs_zone.sh start` path the hook-based trigger already used. A one-shot sweep over every
+  account in the `users` table also runs once when the watcher starts, so a zone that died
+  while the watcher was off (or before anyone tries to log in again) comes back proactively,
+  not just reactively on the next failed attempt.
+
+**Real-world negative-case data point** (why the proactive sweep matters, not just the
+reactive per-login check): `is31` was manually stopped once already this session (`POST
+/api/server/maps` from the admin's own browser at 02:35:47, right as Agilata's client was
+still inside it) — a completely different failure path than a crash or restart, and one no
+in-game signal will ever announce. The reactive login check still recovers from this exactly
+as well as from a restart-caused outage, since it only cares about "is the saved zone running
+right now", not why it went down.
+
+**Still not handled**: if a zone genuinely cannot be started (e.g. permanently removed from
+`gs.conf`, or `gs_zone.sh`'s `MIN_FREE_MB` memory guard blocks it), the affected character
+stays stuck with no fallback — `_autostart_zone` logs `Auto-start FAILED` but doesn't attempt
+anything else. A harder fallback (e.g. force-resetting the character's saved `world_tag` back
+to `gs01` via a write to gamedbd's protocol) was discussed but not built — it requires writing
+to live character save data, which is a meaningfully bigger risk than anything implemented so
+far, and wasn't needed for either real incident this session.

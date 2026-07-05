@@ -1,27 +1,43 @@
 """
 Autostart/auto-stop watcher for on-demand zone lifecycle management.
 
-Background: PW 1.5.5's binaries have no client-facing signal for "player wants to enter
-zone X" other than the internal call world_manager::PlaneSwitch(...). An LD_PRELOAD hook
-(patches/pw_instance_watch_1.5.5) is loaded into gs01 and appends one line per call to
-/tmp/pw_switch_watch.log, e.g.:
+Two independent trigger sources feed the same autostart logic:
 
-    1783230200.685616763 [PlaneSwitch] this=... player=... pos=... worldtag=102 ikey_ptr=... flag=0 ikey_bytes=...
+1. Voluntary in-game zone switches (portal/teleport item). PW 1.5.5's binaries have no
+   client-facing signal for this other than the internal call
+   world_manager::PlaneSwitch(...). An LD_PRELOAD hook (patches/pw_instance_watch_1.5.5) is
+   loaded into gs01 and appends one line per call to /tmp/pw_switch_watch.log, e.g.:
 
-This module tails that log, resolves worldtag -> zone_id via gs.conf's `tag = N` lines
-(see _build_tag_zone_map), and calls /home/gs_zone.sh start <zone> when a player requests
-entry to a zone that isn't running. It also tracks last-seen-activity per zone and, if
-enabled, auto-stops zones that have had no entry requests for a configurable idle window.
+       1783230200.685616763 [PlaneSwitch] this=... player=... pos=... worldtag=102 ikey_ptr=... flag=0 ikey_bytes=...
 
-Caveat: PlaneSwitch fires on zone *switch requests* (entering or leaving via portal/teleport
-item), not on ongoing presence. "Idle" here means "no one has switched into this zone
-recently" — a zone with players who never leave would eventually still look idle. There is
+   _tail_hook_log() tails that file and resolves worldtag -> zone_id via gs.conf's
+   `tag = N` lines (see _build_tag_zone_map).
+
+2. Login / character resume. Confirmed by direct testing (2026-07-05) that PlaneSwitch does
+   NOT fire when a character is placed into their last saved position at login — a stuck
+   character whose saved zone is offline gets "Couldn't login to server" with zero hook
+   activity, and no automatic recovery. Rather than reverse-engineer the actual login/resume
+   placement function in the gs01 binary, this is solved without touching the binary at all:
+   _tail_login_log() tails authd's plaintext log for `UserLogin:userid=N` lines, and for each
+   one queries gamedbd directly (GameClient.get_user_roles(), the same read-only protocol
+   pwadmin-py's account pages already use) to get that account's characters' saved world_tag,
+   and ensures each such zone is running. A proactive sweep over every known account also runs
+   once when the watcher starts, so a zone comes back up even before anyone attempts to log in
+   after e.g. a `pwserver` restart.
+
+Both paths funnel into _maybe_autostart(), which calls /home/gs_zone.sh start <zone> if the
+resolved zone isn't already running (with a per-zone cooldown to dedup retries). Last-seen-
+activity per zone is also tracked here for the idle auto-stop side, if enabled.
+
+Caveat: neither trigger reflects ongoing presence, only "someone just tried to get into this
+zone". "Idle" means "no one has switched into or logged into this zone recently" — a zone with
+players who never leave and never re-trigger either signal could still look idle. There is
 currently no cheaper signal available for live per-zone player counts. Full details in
 docs/zone-lifecycle-and-gm-protocol.md.
 
-Runs as a pair of asyncio background tasks inside the pwadmin-py process itself (it already
-runs directly on the game server as www-data, see server_status.py / server_config.py for
-the same local-filesystem-access pattern).
+Runs as background asyncio tasks inside the pwadmin-py process itself (it already runs
+directly on the game server, see server_status.py / server_config.py for the same
+local-filesystem-access pattern).
 """
 import asyncio
 import json
@@ -31,8 +47,10 @@ from pathlib import Path
 
 from app.config import settings
 from app.services.server_status import get_running_zone_ids
+from app.services.game_client import GameClient
 
 HOOK_LOG_PATH = Path("/tmp/pw_switch_watch.log")
+AUTHD_LOG_PATH = Path(settings.server_path) / "logs" / "authd.log"
 _STATE_FILE = Path(__file__).parent.parent.parent / "data" / "autostart_state.json"
 _ACTIVITY_FILE = Path(__file__).parent.parent.parent / "data" / "instance_watch_log.json"
 
@@ -44,6 +62,7 @@ DEFAULT_IDLE_MINUTES = 60
 PROTECTED_ZONES = {"gs01"}        # never touched: core world, not managed by gs_zone.sh
 
 _LINE_RE = re.compile(r"worldtag=(\d+)")
+_LOGIN_RE = re.compile(r"UserLogin:userid=(\d+)")
 
 # module-level runtime state — single process, single watcher instance
 _tag_zone: dict[int, str] = {}
@@ -52,6 +71,7 @@ _last_start_attempt: dict[str, float] = {}
 _log_entries: list[dict] = []
 _tasks: list[asyncio.Task] = []
 _offset = 0
+_login_offset = 0
 
 
 def _read_state() -> dict:
@@ -169,12 +189,8 @@ async def _autostop_zone(zone_id: str, name: str) -> None:
         _log(f"Auto-stop ERROR for {zone_id} ({name}): {e}")
 
 
-async def _handle_line(line: str) -> None:
-    m = _LINE_RE.search(line)
-    if not m:
-        return
-    tag = int(m.group(1))
-    zone_id = _tag_zone.get(tag)
+def _maybe_autostart(zone_id: str | None) -> None:
+    """Shared by both trigger sources: bump activity, start the zone if it's offline."""
     if not zone_id or zone_id in PROTECTED_ZONES:
         return
 
@@ -191,6 +207,43 @@ async def _handle_line(line: str) -> None:
 
     name = settings.gs_zones_dict.get(zone_id, {}).get("name", zone_id)
     asyncio.create_task(_autostart_zone(zone_id, name))
+
+
+async def _handle_line(line: str) -> None:
+    m = _LINE_RE.search(line)
+    if not m:
+        return
+    tag = int(m.group(1))
+    _maybe_autostart(_tag_zone.get(tag))
+
+
+async def _ensure_user_zones_started(user_id: int) -> None:
+    """Query gamedbd directly for this account's characters' saved world_tag and make sure
+    each one's zone is running — covers login/character-resume, which does not go through
+    the PlaneSwitch hook at all (confirmed by direct testing)."""
+    try:
+        client = GameClient(host="localhost", port=settings.server_port)
+        roles = await client.get_user_roles(user_id)
+    except Exception:
+        return
+    for role in roles:
+        _maybe_autostart(_tag_zone.get(role.get("map")))
+
+
+async def _sweep_all_accounts() -> None:
+    """One-shot proactive sweep over every known account, run once when the watcher starts.
+    Covers the case where a zone died (crash, restart, manual stop) and nobody has attempted
+    to log in yet — without this, the fix is purely reactive to a login attempt."""
+    try:
+        from sqlalchemy import text
+        from app.database import engine
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT id FROM users"))
+            user_ids = [row[0] for row in result.fetchall()]
+    except Exception:
+        return
+    for uid in user_ids:
+        await _ensure_user_zones_started(uid)
 
 
 async def _tail_hook_log() -> None:
@@ -210,6 +263,32 @@ async def _tail_hook_log() -> None:
                         await _handle_line(line)
             else:
                 _offset = 0
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+        await asyncio.sleep(TAIL_POLL_INTERVAL_SECONDS)
+
+
+async def _tail_login_log() -> None:
+    global _login_offset
+    while True:
+        try:
+            if AUTHD_LOG_PATH.exists():
+                size = AUTHD_LOG_PATH.stat().st_size
+                if size < _login_offset:
+                    _login_offset = 0
+                if size > _login_offset:
+                    with open(AUTHD_LOG_PATH, "r", errors="replace") as f:
+                        f.seek(_login_offset)
+                        chunk = f.read()
+                        _login_offset = f.tell()
+                    for line in chunk.splitlines():
+                        m = _LOGIN_RE.search(line)
+                        if m:
+                            asyncio.create_task(_ensure_user_zones_started(int(m.group(1))))
+            else:
+                _login_offset = 0
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -246,12 +325,13 @@ async def _idle_check_loop() -> None:
 
 
 def _reset_runtime_state() -> None:
-    global _offset
+    global _offset, _login_offset
     _tag_zone.clear()
     _tag_zone.update(_build_tag_zone_map())
     _last_activity.clear()
     _last_start_attempt.clear()
     _offset = HOOK_LOG_PATH.stat().st_size if HOOK_LOG_PATH.exists() else 0
+    _login_offset = AUTHD_LOG_PATH.stat().st_size if AUTHD_LOG_PATH.exists() else 0
 
 
 def start() -> None:
@@ -261,9 +341,11 @@ def start() -> None:
     _reset_runtime_state()
     _tasks = [
         asyncio.create_task(_tail_hook_log()),
+        asyncio.create_task(_tail_login_log()),
         asyncio.create_task(_idle_check_loop()),
     ]
     _log(f"Autostart watcher enabled — tracking {len(_tag_zone)} zone(s), idle timeout {get_idle_minutes()}m")
+    asyncio.create_task(_sweep_all_accounts())
 
 
 def stop() -> None:

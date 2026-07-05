@@ -395,11 +395,14 @@
         </div>
         <div class="p-4">
           <p class="text-xs text-slate-500 leading-relaxed mb-3">
-            Watches for player zone-entry requests and auto-starts the target instance if it's
-            offline. Auto-stops idle instances after the timeout below — based on time since the
-            last entry request, not live player count, so a populated instance with no new
-            arrivals can still be stopped. <span class="text-slate-400">World</span>-type zones
-            and the main world are never auto-stopped.
+            Watches for player zone-entry requests <span class="text-slate-400">and</span> login
+            attempts, and auto-starts the target instance if it's offline — this covers a
+            character whose saved position is in a zone that's currently down (crashed, manually
+            stopped, or never restarted after a server reboot). Auto-stops idle instances after
+            the timeout below — based on time since the last entry/login request, not live player
+            count, so a populated instance with no new arrivals can still be stopped.
+            <span class="text-slate-400">World</span>-type zones and the main world are never
+            auto-stopped.
           </p>
           <div class="flex items-center gap-4">
             <label class="flex items-center gap-2.5 cursor-pointer">
