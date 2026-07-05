@@ -290,7 +290,7 @@
             <thead>
               <tr class="bg-slate-800/80 text-slate-500">
                 <th class="text-left px-3 py-2 font-medium">Service</th>
-                <th class="text-center px-3 py-2 font-medium w-14">Count</th>
+                <th class="text-center px-3 py-2 font-medium w-20">Count</th>
                 <th class="text-right px-3 py-2 font-medium w-24">Status</th>
               </tr>
             </thead>
@@ -311,7 +311,9 @@
                     <span x-show="svc.process === 'glinkd'"
                       class="ml-1.5 text-slate-600 text-xs">↗ click for details</span>
                   </td>
-                  <td class="px-3 py-2 text-center text-slate-500" x-text="svc.running ? svc.count : '-'"></td>
+                  <td class="px-3 py-2 text-center text-slate-500"
+                    x-text="!svc.running ? '-' : (svc.threads != null ? svc.threads + ' thr' : svc.count)"
+                    :title="svc.threads != null ? 'Single process, ' + svc.threads + ' threads (worker setting is a thread pool, not separate processes)' : ''"></td>
                   <td class="px-3 py-2 text-right">
                     <span class="inline-block px-2 py-0.5 rounded text-xs font-medium"
                       :class="svc.running

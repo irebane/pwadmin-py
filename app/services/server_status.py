@@ -59,6 +59,35 @@ async def _pgrep_count(process: str) -> int:
         return 0
 
 
+# These are always single-process; the "worker" settings pwadmin-py controls (db_workers,
+# name_workers) are thread pools inside that one process, not separate OS processes — so the
+# plain process count above is always 1 for these and would otherwise look broken/ignored.
+# See docs/instance-autostart.md's sibling audit note (Server Config's DB/Name Workers
+# tooltips) for how this was verified.
+THREAD_POOL_SERVICES = {"gamedbd", "uniquenamed"}
+
+
+async def _no_threads() -> None:
+    return None
+
+
+async def _thread_count(process: str) -> int | None:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "pgrep", "-x", process,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=2.0)
+        pids = [int(p) for p in stdout.split()]
+        if not pids:
+            return None
+        import os
+        return len(os.listdir(f"/proc/{pids[0]}/task"))
+    except Exception:
+        return None
+
+
 def _check_port(host: str, port: int) -> bool:
     try:
         s = socket.socket()
@@ -89,10 +118,13 @@ def _read_glinkd_count() -> int:
 
 async def get_server_status() -> dict:
     counts = await asyncio.gather(*[_pgrep_count(p) for p, _ in SERVICES])
+    thread_counts = await asyncio.gather(*[
+        _thread_count(p) if p in THREAD_POOL_SERVICES else _no_threads() for p, _ in SERVICES
+    ])
 
     services = [
-        {"label": label, "process": proc, "count": cnt, "running": cnt > 0}
-        for (proc, label), cnt in zip(SERVICES, counts)
+        {"label": label, "process": proc, "count": cnt, "running": cnt > 0, "threads": threads}
+        for (proc, label), cnt, threads in zip(SERVICES, counts, thread_counts)
     ]
 
     glinkd_count = _read_glinkd_count()
