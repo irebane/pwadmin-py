@@ -70,8 +70,18 @@ _last_activity: dict[str, float] = {}
 _last_start_attempt: dict[str, float] = {}
 _log_entries: list[dict] = []
 _tasks: list[asyncio.Task] = []
+_pending_tasks: set[asyncio.Task] = set()  # strong refs for fire-and-forget spawns; see _spawn()
 _offset = 0
 _login_offset = 0
+
+
+def _spawn(coro) -> None:
+    """asyncio.create_task() only holds a *weak* reference — with nothing else referencing
+    the task, it can be garbage-collected before it ever runs (silently, no error). Keep a
+    strong reference until it completes."""
+    task = asyncio.create_task(coro)
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)
 
 
 def _read_state() -> dict:
@@ -206,7 +216,7 @@ def _maybe_autostart(zone_id: str | None) -> None:
     _last_start_attempt[zone_id] = now
 
     name = settings.gs_zones_dict.get(zone_id, {}).get("name", zone_id)
-    asyncio.create_task(_autostart_zone(zone_id, name))
+    _spawn(_autostart_zone(zone_id, name))
 
 
 async def _handle_line(line: str) -> None:
@@ -286,7 +296,7 @@ async def _tail_login_log() -> None:
                     for line in chunk.splitlines():
                         m = _LOGIN_RE.search(line)
                         if m:
-                            asyncio.create_task(_ensure_user_zones_started(int(m.group(1))))
+                            _spawn(_ensure_user_zones_started(int(m.group(1))))
             else:
                 _login_offset = 0
         except asyncio.CancelledError:
@@ -345,7 +355,7 @@ def start() -> None:
         asyncio.create_task(_idle_check_loop()),
     ]
     _log(f"Autostart watcher enabled — tracking {len(_tag_zone)} zone(s), idle timeout {get_idle_minutes()}m")
-    asyncio.create_task(_sweep_all_accounts())
+    _spawn(_sweep_all_accounts())
 
 
 def stop() -> None:
