@@ -226,7 +226,7 @@
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
             <div class="text-xs font-medium text-slate-600 mb-0.5">CPU</div>
             <div class="text-base font-semibold"
-              :class="cpuPct > 80 ? 'text-red-400' : cpuPct > 50 ? 'text-amber-400' : 'text-sky-400'"
+              :class="colorForPct(cpuPct)"
               x-text="cpuPct + '%'"></div>
           </div>
           <div class="bg-slate-800/60 rounded-lg p-3 text-center">
