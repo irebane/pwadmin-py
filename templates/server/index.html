@@ -472,7 +472,7 @@
               <select size="11" multiple x-model="selectedOnline"
                 class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 font-mono py-1 focus:outline-none focus:border-blue-500 cursor-pointer">
                 <template x-for="z in onlineMaps" :key="z.id">
-                  <option :value="z.id" x-text="z.id + '\t' + z.name + '  [' + (z.players ?? '?') + (z.players === 1 ? ' player]' : ' players]')"></option>
+                  <option :value="z.id" x-text="z.id + (z.type === 'world' ? '*' : '') + '\t' + z.name + '  [' + (z.players ?? '?') + (z.players === 1 ? ' player]' : ' players]')"></option>
                 </template>
               </select>
               <button @click="stopZone()"
@@ -495,7 +495,7 @@
               <select size="11" multiple x-model="selectedAvail"
                 class="w-full bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 font-mono py-1 focus:outline-none focus:border-blue-500 cursor-pointer">
                 <template x-for="z in availMaps" :key="z.id">
-                  <option :value="z.id" x-text="z.id + '\t' + z.name"></option>
+                  <option :value="z.id" x-text="z.id + (z.type === 'world' ? '*' : '') + '\t' + z.name"></option>
                 </template>
               </select>
               <button @click="startZone()"
@@ -504,6 +504,8 @@
               </button>
             </div>
           </div>
+
+          <p class="text-xs text-slate-600 -mt-1.5 mb-3">* = world-type zone, never auto-stopped and excluded from "Stop Maps (Keep World)"</p>
 
           <!-- Bulk actions -->
           <div class="flex gap-2 pt-3 border-t border-slate-800">
