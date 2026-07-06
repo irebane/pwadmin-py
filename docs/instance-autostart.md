@@ -17,6 +17,8 @@ Two independent toggles, both on the Server page's Map Management card:
   `GS_ZONES` are always exempt.
 
 Both are off by default (opt-in) and persist across restarts in `data/autostart_state.json`.
+Both require [`gs_zone.sh`](../gs_zone.sh) deployed on the game server — see
+[DEPLOY.md](../DEPLOY.md#per-zone-start-stop-script).
 
 ## Auto-Start: two trigger sources
 

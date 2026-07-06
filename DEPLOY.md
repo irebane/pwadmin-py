@@ -62,6 +62,22 @@ sudo systemctl status pwadmin
 sudo journalctl -u pwadmin -f
 ```
 
+### Per-zone start/stop script
+
+Instance Autostart (`app/services/instance_watch.py`) and the manual zone controls on
+the Server Config page (`app/routers/server.py`) both shell out to `sudo /home/gs_zone.sh
+start|stop <zone>` — the app will not be able to start/stop individual zone processes
+without this script in place. Copy it to the game server root (`SERVER_PATH` in `.env`,
+typically `/home`) and make it executable:
+
+```bash
+sudo cp gs_zone.sh /home/gs_zone.sh
+sudo chmod 755 /home/gs_zone.sh
+```
+
+It assumes `./gs`, `gs.conf`, `gmserver.conf`, and `gsalias.conf` live in `$SERVER_PATH/gamed`
+— adjust the `GAMED` path at the top of the script if your layout differs.
+
 ### Permissions
 
 The service user needs write access to the game server config files. If you run the service as `www-data` (recommended when Apache is already serving a PHP admin panel on the same host):
@@ -70,15 +86,15 @@ The service user needs write access to the game server config files. If you run 
 sudo chown -R www-data:www-data /path/to/pwadmin-py
 ```
 
-To allow the service to control the game server via systemctl, add a sudoers rule:
+To allow the service to control the game server via systemctl and run the per-zone script, add a sudoers rule:
 
 ```bash
-echo "www-data ALL=(ALL) NOPASSWD: /bin/systemctl start pwserver, /bin/systemctl stop pwserver, /bin/systemctl restart pwserver" \
+echo "www-data ALL=(ALL) NOPASSWD: /bin/systemctl start pwserver, /bin/systemctl stop pwserver, /bin/systemctl restart pwserver, /home/gs_zone.sh" \
   | sudo tee /etc/sudoers.d/pwadmin
 sudo chmod 440 /etc/sudoers.d/pwadmin
 ```
 
-Replace `www-data` with your service user if different.
+Replace `www-data` with your service user and `/home/gs_zone.sh` with your actual script path if different.
 
 ## Deploy updates
 
