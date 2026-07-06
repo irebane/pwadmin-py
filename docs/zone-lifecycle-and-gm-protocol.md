@@ -246,7 +246,7 @@ Itanium C++ ABI — GCC on Linux does NOT use thiscall/register passing):
 [esp+0x18] unsigned int        (a flag / cost, e.g. teleport fee — observed 0 in all trials)
 ```
 
-### The hook mechanism (generalized, in `patches/pw_instance_watch_1.5.5/pw_instance_watch.c`)
+### The hook mechanism (generalized, in `server/patches/pw_instance_watch_1.5.5/pw_instance_watch.c`)
 
 Key lesson learned the hard way: an early version used inline `__asm__` with `call
 log_switch_request` by symbol name inside a `naked` function. GCC/GAS silently prepended PIC
@@ -286,7 +286,7 @@ deploy.
 Deployed by editing `/home/start.sh`'s `gs01` launch line to add the new `.so` to
 `LD_PRELOAD` (original backed up to `/home/start.sh.bak_before_instance_watch`), then
 `systemctl restart pwserver.service`. Compiled `.so` lives at `/home/gamed/pw_instance_watch.so`
-on the live server (also on record in git at `patches/pw_instance_watch_1.5.5/pw_instance_watch.c`
+on the live server (also on record in git at `server/patches/pw_instance_watch_1.5.5/pw_instance_watch.c`
 — note: the compiled `.so` was built directly on 10.0.0.230 via `gcc -m32 -shared -fPIC
 -nostartfiles`, not committed as a binary artifact). Logs to `/tmp/pw_switch_watch.log` on the
 live server (not synced anywhere, purely observational for now).
@@ -356,7 +356,7 @@ from inside the pwadmin-py process itself (no new service/systemd unit):
 different processes/users:
 - `/tmp/pw_switch_watch.log` (written by the LD_PRELOAD hook running as whatever user runs
   `gs01`, i.e. root) rotates *itself*: `log_switch_request()` in
-  `patches/pw_instance_watch_1.5.5/pw_instance_watch.c` now `stat()`s the file before each write
+  `server/patches/pw_instance_watch_1.5.5/pw_instance_watch.c` now `stat()`s the file before each write
   and reopens with `"w"` (truncate) instead of `"a"` once it exceeds 5 MB. This avoids ever
   needing to grant the pwadmin-py process (running as `www-data`) write/sudo access to a
   root-owned file just to rotate it — it only ever needs read access, which the file's default

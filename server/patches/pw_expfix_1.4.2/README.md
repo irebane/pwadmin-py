@@ -75,7 +75,7 @@ drop_bonus  = 10   ; 10x item drop rolls per mob kill (element.data + extra_drop
 ```
 
 As on 1.5.5, this file must have these keys inside `[GENERAL]` specifically — see
-[../../docs/ptemplate-general-section.md](../../docs/ptemplate-general-section.md). This
+[../../../docs/ptemplate-general-section.md](../../../docs/ptemplate-general-section.md). This
 patch's own config reader scans the whole file for a unique key name regardless of
 section, so it isn't affected by section placement itself — but the *game engine's*
 `exp_bonus`/`sp_bonus`/`money_bonus` parsing (for the parts of the value this patch

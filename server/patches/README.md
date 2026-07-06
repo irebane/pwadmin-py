@@ -8,7 +8,7 @@ each server.
 Both live PWI servers ship `gs` binaries with dead/incomplete rate-bonus code — the
 `ptemplate.conf` keys `exp_bonus`/`sp_bonus`/`money_bonus`/`drop_bonus` don't do what the
 stock binary's own documentation implies unless these patches are applied. See
-[../docs/ptemplate-general-section.md](../docs/ptemplate-general-section.md) for the
+[../../docs/ptemplate-general-section.md](../../docs/ptemplate-general-section.md) for the
 config-side half of this story (a section-placement bug that looks like the same
 symptom but is a completely different bug).
 

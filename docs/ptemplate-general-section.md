@@ -49,6 +49,6 @@ Getting `exp_bonus`/`sp_bonus` into the right section makes the *config file* co
 It does **not** mean the game server actually applies them — on 10.0.0.230 the function
 that's supposed to multiply exp/sp per kill turned out to be a compiled no-op in the
 shipped binary regardless of what the config says. See
-[../patches/README.md](../patches/README.md) for that half of the fix. Both bugs produce
+[../server/patches/README.md](../server/patches/README.md) for that half of the fix. Both bugs produce
 the identical symptom ("I set 10x, I'm getting 1x"), so don't assume fixing one means the
 other doesn't also need checking.

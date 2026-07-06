@@ -46,10 +46,10 @@ nano .env
 
 ## Run as a systemd service
 
-A service file is included at `pwadmin.service`. Adjust `User`, `WorkingDirectory`, and `ExecStart` paths to match your setup, then install it:
+A service file is included at `server/pwadmin.service`. Adjust `User`, `WorkingDirectory`, and `ExecStart` paths to match your setup, then install it:
 
 ```bash
-sudo cp pwadmin.service /etc/systemd/system/pwadmin.service
+sudo cp server/pwadmin.service /etc/systemd/system/pwadmin.service
 sudo systemctl daemon-reload
 sudo systemctl enable pwadmin
 sudo systemctl start pwadmin
@@ -71,7 +71,7 @@ without this script in place. Copy it to the game server root (`SERVER_PATH` in 
 typically `/home`) and make it executable:
 
 ```bash
-sudo cp gs_zone.sh /home/gs_zone.sh
+sudo cp server/gs_zone.sh /home/gs_zone.sh
 sudo chmod 755 /home/gs_zone.sh
 ```
 
@@ -105,10 +105,10 @@ The service runs uvicorn with `--reload`, so code and template changes are picke
 sudo -u www-data git -C /path/to/pwadmin-py pull
 ```
 
-If you update `pwadmin.service` itself:
+If you update `server/pwadmin.service` itself:
 
 ```bash
-sudo cp /path/to/pwadmin-py/pwadmin.service /etc/systemd/system/pwadmin.service
+sudo cp /path/to/pwadmin-py/server/pwadmin.service /etc/systemd/system/pwadmin.service
 sudo systemctl daemon-reload
 sudo systemctl restart pwadmin
 ```

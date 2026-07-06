@@ -3,7 +3,7 @@
 `LD_PRELOAD` shared object that hot-patches `/home/gamed/gs` on **10.0.0.230** so that
 `ptemplate.conf`'s `[GENERAL]` keys `exp_bonus`, `sp_bonus`, `money_bonus`, and
 `drop_bonus` actually do something. See
-[../../docs/ptemplate-general-section.md](../../docs/ptemplate-general-section.md) first
+[../../../docs/ptemplate-general-section.md](../../../docs/ptemplate-general-section.md) first
 — getting these keys into `[GENERAL]` is a *separate*, also-required fix; this patch
 assumes that's already done.
 

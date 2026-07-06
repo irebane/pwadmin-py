@@ -17,7 +17,7 @@ Two independent toggles, both on the Server page's Map Management card:
   `GS_ZONES` are always exempt.
 
 Both are off by default (opt-in) and persist across restarts in `data/autostart_state.json`.
-Both require [`gs_zone.sh`](../gs_zone.sh) deployed on the game server — see
+Both require [`gs_zone.sh`](../server/gs_zone.sh) deployed on the game server — see
 [DEPLOY.md](../DEPLOY.md#per-zone-start-stop-script).
 
 ## Auto-Start: two trigger sources
@@ -26,7 +26,7 @@ The PW 1.5.5 binaries have no client-facing "player wants zone X" signal on thei
 uses two different mechanisms depending on how the request happens:
 
 1. **Voluntary zone switch** (portal, teleport item) — an LD_PRELOAD hook
-   (`patches/pw_instance_watch_1.5.5/pw_instance_watch.c`) sits on
+   (`server/patches/pw_instance_watch_1.5.5/pw_instance_watch.c`) sits on
    `world_manager::PlaneSwitch(...)` inside `gs01` and logs every call to
    `/tmp/pw_switch_watch.log`. `app/services/instance_watch.py`'s `_tail_hook_log()` tails that
    file and resolves the logged `worldtag` to a `zone_id` via `gs.conf`'s `tag = N` lines.
@@ -123,6 +123,6 @@ before.
 | `app/services/instance_watch.py` | Watcher: both auto-start trigger tails, the idle-check loop, state persistence |
 | `app/services/server_status.py` | `get_running_zone_pids()`, `read_zone_player_count()` — shared with the plain map-status endpoint too |
 | `app/services/game_client.py` | Binary protocol client to gamedbd (port 29400), used for the login-resume trigger |
-| `patches/pw_instance_watch_1.5.5/pw_instance_watch.c` | LD_PRELOAD hook on `PlaneSwitch`, loaded into `gs01` only |
+| `server/patches/pw_instance_watch_1.5.5/pw_instance_watch.c` | LD_PRELOAD hook on `PlaneSwitch`, loaded into `gs01` only |
 | `app/routers/server.py` | `/api/server/autostart` (get/set), manual-action logging into the same Instance Activity log |
 | `templates/server/index.html` | UI: toggles + tooltips in Map Management, Instance Activity log card |

@@ -6,7 +6,7 @@
 teleport item, etc). **Purely observational: does not alter game behavior.** Logs each
 call's arguments to `/tmp/pw_switch_watch.log`, which `app/services/instance_watch.py`
 tails to drive the Instance Autostart feature. See
-[../../docs/zone-lifecycle-and-gm-protocol.md](../../docs/zone-lifecycle-and-gm-protocol.md)
+[../../../docs/zone-lifecycle-and-gm-protocol.md](../../../docs/zone-lifecycle-and-gm-protocol.md)
 for the full investigation behind this (including what *doesn't* go through `PlaneSwitch`
 — notably, login/character-resume into an offline zone doesn't fire this hook at all).
 

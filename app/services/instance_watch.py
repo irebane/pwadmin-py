@@ -5,7 +5,7 @@ Two independent trigger sources feed the same autostart logic:
 
 1. Voluntary in-game zone switches (portal/teleport item). PW 1.5.5's binaries have no
    client-facing signal for this other than the internal call
-   world_manager::PlaneSwitch(...). An LD_PRELOAD hook (patches/pw_instance_watch_1.5.5) is
+   world_manager::PlaneSwitch(...). An LD_PRELOAD hook (server/patches/pw_instance_watch_1.5.5) is
    loaded into gs01 and appends one line per call to /tmp/pw_switch_watch.log, e.g.:
 
        1783230200.685616763 [PlaneSwitch] this=... player=... pos=... worldtag=102 ikey_ptr=... flag=0 ikey_bytes=...
