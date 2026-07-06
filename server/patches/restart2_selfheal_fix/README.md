@@ -69,3 +69,16 @@ config file names, or `LD_PRELOAD` target (e.g. after
 [rebuilding pw_expfix_155.so](../pw_expfix_1.5.5/README.md#rebuilding-after-a-gs-binary-upgrade))
 ever changes in `start.sh`, update this file to match or the self-heal path will silently
 drift out of sync again.
+
+## Known drift (as of 2026-07-06)
+
+Exactly the scenario warned about above has already happened once:
+[`pw_instance_watch_1.5.5`](../pw_instance_watch_1.5.5/) was added after this fix
+(2026-07-03) and `start.sh` was updated to
+`LD_PRELOAD="./pw_expfix_155.so ./pw_instance_watch.so"`, but this `restart2` was never
+updated to match — it still only sets `LD_PRELOAD=./pw_expfix_155.so`. Not urgent (no
+evidence `RestartShell` has ever actually fired on this server, same as the original bug
+this file fixed), but if it ever does, the zone-switch watcher would silently stop
+working after a self-heal while the rate patch keeps working. Fix is a one-line change to
+add `./pw_instance_watch.so` to the `LD_PRELOAD` value above, then redeploy per
+[Deploying](#deploying).

@@ -1,0 +1,18 @@
+[Unit]
+Description=Perfect World 1.5.5 Game Server
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=forking
+User=root
+WorkingDirectory=/home
+ExecStart=/home/start.sh
+ExecStop=/home/stop.sh
+RemainAfterExit=yes
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

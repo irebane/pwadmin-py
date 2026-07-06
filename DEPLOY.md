@@ -78,6 +78,15 @@ sudo chmod 755 /home/gs_zone.sh
 It assumes `./gs`, `gs.conf`, `gmserver.conf`, and `gsalias.conf` live in `$SERVER_PATH/gamed`
 — adjust the `GAMED` path at the top of the script if your layout differs.
 
+### Game server itself
+
+pwadmin-py assumes a PW game server is already installed and runnable — it doesn't set
+one up. `server/pwserver.service`, `server/start.sh`, and `server/stop.sh` are included as
+a reference for how this deployment launches/stops it (and, notably, where `LD_PRELOAD`
+for the binary patches in `server/patches/` gets set). See
+[server/README.md](server/README.md) for what each file does; adjust paths to match your
+own server layout before using them as-is.
+
 ### Permissions
 
 The service user needs write access to the game server config files. If you run the service as `www-data` (recommended when Apache is already serving a PHP admin panel on the same host):
