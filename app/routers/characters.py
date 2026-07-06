@@ -28,4 +28,10 @@ async def get_character(role_id: int, user: dict = Depends(get_current_user)):
     client = _get_game_client()
     if client is None:
         return None
-    return await client.get_role_data(role_id, server_ver=75)
+    data = await client.get_role_data(role_id, server_ver=75)
+    if data is None:
+        return None
+    owner_id = data.get("base", {}).get("userid")
+    if not user.get("is_admin") and owner_id != user.get("id"):
+        raise HTTPException(403)
+    return data

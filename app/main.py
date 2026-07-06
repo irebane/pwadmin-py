@@ -19,6 +19,13 @@ def _require_session(request: Request):
     return session, None
 
 
+def _require_admin_session(request: Request):
+    session = read_session(request)
+    if not session or not session.get("is_admin"):
+        return None, RedirectResponse("/", status_code=302)
+    return session, None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -92,17 +99,17 @@ async def account_page(request: Request):
 
 @app.get("/gshop")
 async def gshop_page(request: Request):
-    _, redir = _require_session(request)
+    session, redir = _require_admin_session(request)
     if redir:
         return redir
-    return templates.TemplateResponse(request, "gshop/index.html")
+    return templates.TemplateResponse(request, "gshop/index.html", {"is_admin": session.get("is_admin", False)})
 
 
 @app.get("/server")
 async def server_page(request: Request):
-    _, redir = _require_session(request)
+    session, redir = _require_admin_session(request)
     if redir:
         return redir
-    return templates.TemplateResponse(request, "server/index.html")
+    return templates.TemplateResponse(request, "server/index.html", {"is_admin": session.get("is_admin", False)})
 
 

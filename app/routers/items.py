@@ -25,7 +25,7 @@ router = APIRouter()
 async def item_builder_page(request: Request):
     from app.auth.sessions import read_session as _rs
     from fastapi.responses import RedirectResponse
-    if not (_rs(request) or {}).get("id"):
+    if not (_rs(request) or {}).get("is_admin"):
         return RedirectResponse("/", status_code=302)
     items_data = _load_items()
     ctx = get_template_data(settings.server_ver)
@@ -42,6 +42,7 @@ async def item_builder_page(request: Request):
         if cat in elf_slots:
             elf_slots[cat].append(entry)
     ctx["elf_gear_slots"] = elf_slots
+    ctx["is_admin"] = True
     return templates.TemplateResponse(request, "item_builder/index.html", ctx)
 
 
