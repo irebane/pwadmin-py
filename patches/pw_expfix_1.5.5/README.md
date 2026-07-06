@@ -49,6 +49,30 @@ from disassembling it (`objdump -d -C /home/gamed/gs`):
 | Item-roll loop bound, event mode | `0x08101f53` (imm32 inside `movl $2, -0x148(%ebp)`) | Overwritten with `drop_bonus * 2` |
 | `call DropItemFromGlobal` inside `gnpc_imp::DropItem` | `0x08102287` (targets `0x08101bca`) | Retargeted to `my_drop_global`, a trampoline that calls the real function `drop_bonus` times |
 
+## Prebuilt `.so`
+
+`pw_expfix_155.so` in this directory is the exact binary running in production, committed
+alongside the source so anyone running the **same build** of the PWI 1.5.5 `gs` binary
+(most copies of the common `PWI_v155_e156_t128` server pack are byte-identical) can skip
+the 32-bit toolchain setup entirely and go straight to
+[Deploying](#deploying) below.
+
+**Before trusting the prebuilt `.so`, confirm your `gs` binary actually matches** — every
+address in the table above is hardcoded to this exact compiled binary. A one-line check:
+
+```bash
+md5sum /home/gamed/gs
+# compare against the copy this .so was built from — if you don't have a known-good
+# reference hash, the safe move is to verify behavior after loading it (see Verifying
+# it's loaded below) rather than assume it's compatible.
+```
+
+If your `gs` differs at all (different pack, patched, recompiled, different compiler),
+**do not use the prebuilt `.so`** — a mismatched binary will patch the wrong bytes at
+runtime, which can crash `gs` or corrupt unrelated code paths silently. Rebuild from
+source instead (below), which is the only way to get addresses re-derived for your
+specific binary.
+
 ## Building
 
 Needs a 32-bit toolchain (the target `gs` is i386, the server is otherwise x86-64):
@@ -68,8 +92,8 @@ reads `/home/gamed/ptemplate.conf` at load time via a hardcoded path, matching t
 
 ## Deploying
 
-1. Copy `pw_expfix_155.c` and the compiled `pw_expfix_155.so` to `/home/gamed/` on
-   10.0.0.230.
+1. Copy `pw_expfix_155.c` and `pw_expfix_155.so` (prebuilt, or freshly built per above) to
+   `/home/gamed/` on 10.0.0.230.
 2. `/home/start.sh`'s `gs` launch line must set the env var:
    ```sh
    cd $PW_PATH/gamed; LD_PRELOAD=./pw_expfix_155.so ./gs gs01 gs.conf gmserver.conf gsalias.conf is61 >$PW_PATH/logs/gs01.log 2>&1 &
