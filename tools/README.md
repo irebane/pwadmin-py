@@ -3,7 +3,8 @@
 Regenerates `data/pw_items.json` (the item name database used by Item Builder and G-Shop) from one of two sources:
 
 - **elements.data** — your game server's binary item database (recommended, correct categories)
-- **pw_items.php** — a PHP item list file (fallback)
+- **pw_items.php** — a PHP item list file (fallback), in the format used by
+  [shadowvzs/pwAdmin](https://github.com/shadowvzs/pwAdmin)
 
 Before overwriting, the current `pw_items.json` is always backed up to `data/backups/pw_items_YYYYMMDD_HHMMSS.json.bak`.
 
