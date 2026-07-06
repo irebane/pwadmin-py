@@ -13,6 +13,7 @@ here and why.
 | [pwserver.service](pwserver.service) | `/etc/systemd/system/pwserver.service` | systemd unit for the PW game server itself — `ExecStart=start.sh`, `ExecStop=stop.sh` |
 | [start.sh](start.sh) | `$SERVER_PATH/start.sh` (e.g. `/home/start.sh`) | Launches every game-server daemon in order (`logservice`, `uniquenamed`, `authd`, `gamedbd`, `gacd`, `gfactiond`, `gdeliveryd`, `glinkd` x2, then `gs`). **This is where `LD_PRELOAD` for the patches in `patches/` actually gets set** on the main `gs01` process — see the `pw_expfix_1.5.5`/`pw_instance_watch_1.5.5` READMEs |
 | [stop.sh](stop.sh) | `$SERVER_PATH/stop.sh` (e.g. `/home/stop.sh`) | Graceful-then-forceful shutdown of every daemon `start.sh` launches, in reverse dependency order |
+| [example-configs/](example-configs/) | N/A — reference only, not deployed | Real config files showing the exact format `app/services/server_config.py` reads/writes via the Server Config page's Save action |
 
 **Note:** `restart2` (under `patches/restart2_selfheal_fix/`) is `gs`'s own internal
 crash-recovery script — a *third*, separate `LD_PRELOAD` site distinct from `start.sh`.
