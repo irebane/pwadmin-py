@@ -7,7 +7,7 @@ from starlette.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from app.database import engine, Base
-from app.routers import auth, accounts, characters, game, maps, gshop, items, server, activity_log
+from app.routers import auth, accounts, characters, game, maps, gshop, items, server, activity_log, events
 from app.auth.sessions import read_session
 from app.services import instance_watch
 
@@ -79,6 +79,7 @@ app.include_router(gshop.router)
 app.include_router(items.router)
 app.include_router(server.router)
 app.include_router(activity_log.router)
+app.include_router(events.router)
 
 
 @app.get("/")

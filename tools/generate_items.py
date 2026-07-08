@@ -339,6 +339,53 @@ def _read_field(data: bytes, pos: int, ftype: str) -> tuple[object, int]:
     return None, pos
 
 
+def _iter_tables(data: bytes, tables: list[dict], conv_idx: int):
+    """
+    Walk elements.data table-by-table, yielding (idx, tbl, count, records_start_pos) for
+    every table in order. `count` is None for the conv_idx (TALK_PROC) table, which has
+    no record-count prefix — its "records" are an opaque pattern-scanned blob. Advances
+    past each table's full byte range (offset handling for idx 0/20/100's AUTO blobs,
+    the record-count read, and `count * rec_size`) before yielding the next table, so
+    callers must not separately advance the shared file position — only their own local
+    copy of the yielded `records_start_pos`, if they parse records from it. Stops (returns)
+    on EOF or an implausible record count.
+    """
+    pos = 4  # version int16 + signature int16
+    for idx, tbl in enumerate(tables):
+        if idx == 0:
+            pos += tbl['offset']
+        elif tbl['offset'] == 'AUTO' and idx == 20:
+            pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len + 4
+        elif tbl['offset'] == 'AUTO' and idx == 100:
+            pos += 4
+            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+            pos += buf_len
+        elif isinstance(tbl['offset'], int) and tbl['offset'] > 0:
+            pos += tbl['offset']
+
+        if idx == conv_idx:
+            pat_pos = data.find(b'facedata\\', pos)
+            if pat_pos == -1:
+                print(f"WARNING: TALK_PROC pattern not found, aborting at table {idx}", file=sys.stderr)
+                return
+            list_length = max(pat_pos - pos - 72, 0)
+            pos += list_length
+            yield idx, tbl, None, pos
+            continue
+
+        if pos + 4 > len(data):
+            return
+        count = struct.unpack_from('<i', data, pos)[0]; pos += 4
+        if count < 0 or count > 200_000:
+            print(f"  [{idx:3d}] {tbl['name']}: implausible count={count}, stopping", file=sys.stderr)
+            return
+
+        yield idx, tbl, count, pos
+        pos += count * tbl['rec_size']
+
+
 _NA_PREFIX = re.compile(r'^N/A\s*')
 # Block CJK/Hangul/Kana but allow non-ASCII symbols like ☆ ★ ✦
 _CJK = re.compile(r'[　-ヿ㐀-䶿一-鿿가-힯豈-﫿]')
@@ -367,9 +414,7 @@ def from_elements(elements_path: str, _existing: dict | None = None,
     data = Path(elements_path).read_bytes()
     print(f"Loaded {len(data):,} bytes, {len(tables)} tables defined.", file=sys.stderr)
 
-    pos = 0
-    version  = struct.unpack_from('<h', data, pos)[0]; pos += 2
-    _sig     = struct.unpack_from('<h', data, pos)[0]; pos += 2
+    version = struct.unpack_from('<h', data, 0)[0]
     print(f"elements.data version={version}", file=sys.stderr)
 
     # Collected items: {(pw_type, pw_subtype): [(id, name), ...]}
@@ -380,48 +425,11 @@ def from_elements(elements_path: str, _existing: dict | None = None,
     deco_sub: dict[int, str] = {}
     fashion_sub: dict[int, str] = {}
 
-    for idx, tbl in enumerate(tables):
+    for idx, tbl, count, pos in _iter_tables(data, tables, conv_idx):
         name = tbl['name']
 
-        # ── Handle offset section ──────────────────────────────────────────
-        if idx == 0:
-            # EQUIPMENT_ADDON: fixed 4-byte offset blob before count
-            pos += tbl['offset']  # offset == 4
-        elif tbl['offset'] == 'AUTO' and idx == 20:
-            # SKILLTOME_SUB_TYPE: 4-byte tag + 4-byte len + len bytes + 4 bytes
-            _tag = data[pos:pos+4]; pos += 4
-            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
-            pos += buf_len
-            pos += 4
-        elif tbl['offset'] == 'AUTO' and idx == 100:
-            # NPC_WAR_TOWERBUILD_SERVICE: 4-byte tag + 4-byte len + len bytes
-            _tag = data[pos:pos+4]; pos += 4
-            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
-            pos += buf_len
-        elif isinstance(tbl['offset'], int) and tbl['offset'] > 0:
-            pos += tbl['offset']
-
-        # ── Conversation list (TALK_PROC at conv_idx) — auto-size blob ────
-        if idx == conv_idx:
-            pattern = b'facedata\\'
-            pat_pos = data.find(pattern, pos)
-            if pat_pos == -1:
-                print(f"WARNING: TALK_PROC pattern not found, aborting at table {idx}", file=sys.stderr)
-                break
-            list_length = pat_pos - pos - 72
-            if list_length < 0:
-                list_length = 0
-            pos += list_length
-            continue  # no record_count follows for this table
-
-        # ── Read records ───────────────────────────────────────────────────
-        if pos + 4 > len(data):
-            break
-        count = struct.unpack_from('<i', data, pos)[0]; pos += 4
-
-        if count < 0 or count > 200_000:
-            print(f"  [{idx:3d}] {name}: implausible count={count}, stopping", file=sys.stderr)
-            break
+        if count is None:
+            continue  # conv_idx (TALK_PROC): opaque blob, nothing to parse here
 
         rec_size = tbl['rec_size']
         if rec_size == 0:
@@ -434,8 +442,6 @@ def from_elements(elements_path: str, _existing: dict | None = None,
         want = is_sub_type or (table_mapping is not None)
 
         if not want:
-            # Fast skip: jump over all records without parsing
-            pos += count * rec_size
             continue
 
         fields = tbl['fields']
@@ -599,44 +605,21 @@ def extract_item_addons(elements_path: str, cfg_name: str | None = None) -> dict
     cfg_path = _resolve_cfg(cfg_name, elements_path)
     conv_idx, tables = _load_config(cfg_path)
     data = Path(elements_path).read_bytes()
-    pos = 4  # version (int16) + signature (int16)
 
     addon_master: dict[int, dict] = {}
     gear_items: dict[int, list[int]] = {}
 
-    for idx, tbl in enumerate(tables):
+    for idx, tbl, count, pos in _iter_tables(data, tables, conv_idx):
         name = tbl['name']
-        if idx == 0:
-            pos += tbl['offset']
-        elif tbl['offset'] == 'AUTO' and idx == 20:
-            pos += 4
-            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
-            pos += buf_len + 4
-        elif tbl['offset'] == 'AUTO' and idx == 100:
-            pos += 4
-            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
-            pos += buf_len
-        elif isinstance(tbl['offset'], int) and tbl['offset'] > 0:
-            pos += tbl['offset']
-
-        if idx == conv_idx:
-            pat_pos = data.find(b'facedata\\', pos)
-            list_length = max(pat_pos - pos - 72, 0) if pat_pos != -1 else 0
-            pos += list_length
+        if count is None:
             continue
 
-        if pos + 4 > len(data):
-            break
-        count = struct.unpack_from('<i', data, pos)[0]; pos += 4
-        if count < 0 or count > 200_000:
-            break
         rec_size = tbl['rec_size']
         if rec_size == 0:
             continue
 
         want = name == "001 - EQUIPMENT_ADDON" or name in _GEAR_ESSENCE_TABLES
         if not want:
-            pos += count * rec_size
             continue
 
         fields = tbl['fields']; types = tbl['types']
@@ -819,43 +802,20 @@ def extract_item_stats(elements_path: str, cfg_name: str | None = None) -> dict[
     cfg_path = _resolve_cfg(cfg_name, elements_path)
     conv_idx, tables = _load_config(cfg_path)
     data = Path(elements_path).read_bytes()
-    pos = 4  # version (int16) + signature (int16)
 
     result: dict[int, dict] = {}
 
-    for idx, tbl in enumerate(tables):
+    for idx, tbl, count, pos in _iter_tables(data, tables, conv_idx):
         name = tbl['name']
-        if idx == 0:
-            pos += tbl['offset']
-        elif tbl['offset'] == 'AUTO' and idx == 20:
-            pos += 4
-            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
-            pos += buf_len + 4
-        elif tbl['offset'] == 'AUTO' and idx == 100:
-            pos += 4
-            buf_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
-            pos += buf_len
-        elif isinstance(tbl['offset'], int) and tbl['offset'] > 0:
-            pos += tbl['offset']
-
-        if idx == conv_idx:
-            pat_pos = data.find(b'facedata\\', pos)
-            list_length = max(pat_pos - pos - 72, 0) if pat_pos != -1 else 0
-            pos += list_length
+        if count is None:
             continue
 
-        if pos + 4 > len(data):
-            break
-        count = struct.unpack_from('<i', data, pos)[0]; pos += 4
-        if count < 0 or count > 200_000:
-            break
         rec_size = tbl['rec_size']
         if rec_size == 0:
             continue
 
         field_map = _STAT_FIELD_MAP.get(name)
         if not field_map:
-            pos += count * rec_size
             continue
 
         fields = tbl['fields']; types = tbl['types']

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Events — pwAdmin{% endblock %}
+
+{% block content %}
+<div class="max-w-screen-xl mx-auto" x-data="eventsManager()">
+
+  <div class="mb-4">
+    <h1 class="text-sm font-semibold text-slate-300">GM Activity Config (in-game events)</h1>
+    <p class="text-xs text-slate-500 mt-1 max-w-3xl">
+      Read-only for now. The <code class="text-slate-400">openlist</code>/<code class="text-slate-400">closelist</code>
+      columns are raw values from the server's <code class="text-slate-400">elements.data</code> — every record seen so
+      far has an identical open/close value per slot, which rules out a plain time-of-day schedule. They're most likely
+      references into another trigger/task system rather than editable times, so editing and live triggering aren't
+      wired up until that's understood.
+    </p>
+  </div>
+
+  <!-- Status bar -->
+  <div x-show="statusMsg" x-cloak
+    class="mb-3 text-xs border rounded px-3 py-2 text-red-400 bg-red-950/40 border-red-900/50" x-text="statusMsg"></div>
+
+  <div class="text-xs text-slate-500 mb-3"><span x-text="events.length"></span> events</div>
+
+  <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto">
+    <table class="w-full text-xs">
+      <thead class="border-b border-slate-800">
+        <tr class="text-slate-500">
+          <th class="px-3 py-2 text-left">ID</th>
+          <th class="px-3 py-2 text-left">Name</th>
+          <th class="px-3 py-2 text-center">Disabled</th>
+          <th class="px-3 py-2 text-left">Open (raw)</th>
+          <th class="px-3 py-2 text-left">Close (raw)</th>
+          <th class="px-3 py-2 text-center">Trigger</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="ev in events" :key="ev.id">
+          <tr class="border-b border-slate-800/50 hover:bg-slate-800/30">
+            <td class="px-3 py-1.5 text-blue-400" x-text="ev.id"></td>
+            <td class="px-3 py-1.5 text-slate-300" x-text="ev.name || '—'"></td>
+            <td class="px-3 py-1.5 text-center">
+              <span :class="ev.disabled ? 'text-red-400' : 'text-emerald-400'" x-text="ev.disabled ? 'Yes' : 'No'"></span>
+            </td>
+            <td class="px-3 py-1.5 text-slate-500 font-mono" x-text="nonZero(ev.openlist).join(', ') || '—'"></td>
+            <td class="px-3 py-1.5 text-slate-500 font-mono" x-text="nonZero(ev.closelist).join(', ') || '—'"></td>
+            <td class="px-3 py-1.5 text-center">
+              <button disabled title="Not available yet — requires decoding the schedule/trigger reference and, for no-restart triggering, reverse-engineering the GMControlGame protocol. See docs/zone-lifecycle-and-gm-protocol.md."
+                class="text-xs px-2 py-0.5 bg-slate-800 text-slate-600 rounded font-semibold cursor-not-allowed">
+                Trigger now
+              </button>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="events.length === 0 && !loading">
+          <td colspan="6" class="px-3 py-8 text-center text-slate-600">No events found</td>
+        </tr>
+        <tr x-show="loading">
+          <td colspan="6" class="px-3 py-8 text-center text-slate-600">Loading...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function eventsManager() {
+  return {
+    events: [], loading: true, statusMsg: '',
+
+    async init() {
+      await this.load();
+    },
+
+    async load() {
+      this.loading = true;
+      try {
+        const r = await fetch('/api/events');
+        if (r.ok) {
+          this.events = await r.json();
+        } else {
+          this.statusMsg = 'Failed to load events (' + r.status + ')';
+        }
+      } catch (e) {
+        this.statusMsg = 'Failed to load events';
+      }
+      this.loading = false;
+    },
+
+    nonZero(list) {
+      return (list || []).filter(v => v !== 0);
+    },
+  };
+}
+</script>
+{% endblock %}
